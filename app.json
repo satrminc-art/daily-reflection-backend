@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Daily Reflection",
+    "slug": "daily-reflection",
+    "version": "1.0.0",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "dailyreflection",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.dailyreflection.app",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.dailyreflection.app",
+      "softwareKeyboardLayoutMode": "pan",
+      "adaptiveIcon": {
+        "backgroundColor": "#E8E1D6"
+      }
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#F6F1EA",
+      "barStyle": "dark-content",
+      "translucent": false
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#FCF8F1",
+      "barStyle": "dark-content"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#A68F72"
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}

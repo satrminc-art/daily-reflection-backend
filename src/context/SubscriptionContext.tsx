@@ -1,0 +1,231 @@
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { __DEV_OVERRIDE_ENABLED__ } from "@/config/devFlags";
+import { useAppContext } from "@/context/AppContext";
+import {
+  deriveMembershipTier,
+  fetchCurrentOffering,
+  fetchCustomerInfo,
+  initializePurchases,
+  isPurchasesConfigured,
+  purchaseRevenueCatPackage,
+  restoreRevenueCatPurchases,
+} from "@/services/purchases";
+import { MembershipTier } from "@/types/membership";
+import {
+  scheduleYearEndPremiumReminder,
+  clearYearEndPremiumReminder,
+} from "@/services/notificationService";
+import {
+  clearDevSubscriptionOverride,
+  loadDevSubscriptionOverride,
+  saveDevSubscriptionOverride,
+} from "@/services/subscriptionOverride";
+import { getAppStrings } from "@/localization/strings";
+import type { CustomerInfo, PurchasesOffering, PurchasesPackage } from "@/types/purchases";
+import type { SubscriptionModel } from "@/types/reflection";
+import {
+  getPrimaryOffering,
+  hasActivePremiumEntitlement,
+  resolveCurrentPlanLabel,
+} from "@/utils/subscriptionHelpers";
+
+interface SubscriptionContextValue {
+  isPremium: boolean;
+  offering: PurchasesOffering | null;
+  loading: boolean;
+  error: string | null;
+  configured: boolean;
+  currentPlanLabel: "Freemium" | "Premium" | "Lifelong";
+  isUsingDevOverride: boolean;
+  devOverridePlan: SubscriptionModel | null;
+  monthlyPackage: PurchasesPackage | null;
+  yearlyPackage: PurchasesPackage | null;
+  purchasePackage: (pkg: PurchasesPackage) => Promise<void>;
+  restorePurchases: () => Promise<void>;
+  refreshSubscriptionStatus: () => Promise<void>;
+  setRealTier: (tier: MembershipTier | null) => void;
+  setDevOverridePlan: (plan: SubscriptionModel) => Promise<void>;
+  clearDevOverridePlan: () => Promise<void>;
+}
+
+const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
+
+function getErrorMessage(error: unknown, language?: string | null) {
+  return error instanceof Error ? error.message : getAppStrings(language).t("paywall.error");
+}
+
+export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
+  const { appState } = useAppContext();
+  const [configured, setConfigured] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [realTier, setRealTier] = useState<MembershipTier | null>(null);
+  const [devOverridePlan, setDevOverridePlanState] = useState<SubscriptionModel | null>(null);
+
+  useEffect(() => {
+    if (!__DEV_OVERRIDE_ENABLED__) {
+      return;
+    }
+
+    loadDevSubscriptionOverride().then(setDevOverridePlanState).catch((nextError) => {
+      console.warn("Failed to load dev subscription override", nextError);
+    });
+  }, []);
+
+  async function refreshSubscriptionStatus() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const didConfigure = await initializePurchases();
+      setConfigured(didConfigure || isPurchasesConfigured());
+
+      if (!didConfigure && !isPurchasesConfigured()) {
+        setOffering(null);
+        setCustomerInfo(null);
+        return;
+      }
+
+      const [nextOffering, nextCustomerInfo] = await Promise.all([
+        fetchCurrentOffering(),
+        fetchCustomerInfo(),
+      ]);
+
+      setOffering(nextOffering);
+      setCustomerInfo(nextCustomerInfo);
+      setRealTier(nextCustomerInfo ? deriveMembershipTier(nextCustomerInfo) : null);
+    } catch (nextError) {
+      setError(getErrorMessage(nextError, appState.preferredLanguage));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refreshSubscriptionStatus().catch((nextError) => {
+      setError(getErrorMessage(nextError, appState.preferredLanguage));
+      setLoading(false);
+    });
+  }, [appState.preferredLanguage]);
+
+  async function purchasePackage(pkg: PurchasesPackage) {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const info = await purchaseRevenueCatPackage(pkg);
+      setCustomerInfo(info);
+      setRealTier(info ? deriveMembershipTier(info) : null);
+      setOffering(await fetchCurrentOffering());
+    } catch (nextError) {
+      setError(getErrorMessage(nextError, appState.preferredLanguage));
+      throw nextError;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function restorePurchases() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const info = await restoreRevenueCatPurchases();
+      setCustomerInfo(info);
+      setRealTier(info ? deriveMembershipTier(info) : null);
+      setOffering(await fetchCurrentOffering());
+    } catch (nextError) {
+      setError(getErrorMessage(nextError, appState.preferredLanguage));
+      throw nextError;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const actualMembershipTier = realTier ?? (customerInfo ? deriveMembershipTier(customerInfo) : "freemium");
+  const actualIsPremium = actualMembershipTier !== "freemium" || hasActivePremiumEntitlement(customerInfo?.entitlements);
+  const packageSet = useMemo(() => getPrimaryOffering(offering), [offering]);
+  const actualPlanLabel =
+    actualMembershipTier === "lifelong"
+      ? "Lifelong"
+      : actualMembershipTier === "premium"
+        ? "Premium"
+        : resolveCurrentPlanLabel({
+            isPremium: actualIsPremium,
+            activeSubscriptions: customerInfo?.activeSubscriptions,
+          });
+  const effectivePlanLabel = __DEV_OVERRIDE_ENABLED__ && devOverridePlan ? devOverridePlan : actualPlanLabel;
+  const isPremium = effectivePlanLabel !== "Freemium";
+
+  async function setDevOverridePlan(plan: SubscriptionModel) {
+    if (!__DEV_OVERRIDE_ENABLED__) {
+      return;
+    }
+
+    await saveDevSubscriptionOverride(plan);
+    setDevOverridePlanState(plan);
+  }
+
+  async function clearDevOverridePlan() {
+    if (!__DEV_OVERRIDE_ENABLED__) {
+      return;
+    }
+
+    await clearDevSubscriptionOverride();
+    setDevOverridePlanState(null);
+  }
+
+  useEffect(() => {
+    const strings = getAppStrings(appState.preferredLanguage);
+
+    if (isPremium) {
+      scheduleYearEndPremiumReminder({
+        title: strings.yearEndReminderTitle(appState.userName),
+        body: strings.yearEndReminderBody(),
+      }).catch((error) => {
+        console.warn("Failed to schedule premium reminder", error);
+      });
+      return;
+    }
+
+    clearYearEndPremiumReminder().catch((error) => {
+      console.warn("Failed to clear premium reminder", error);
+    });
+  }, [appState.preferredLanguage, appState.userName, isPremium]);
+
+  return (
+    <SubscriptionContext.Provider
+      value={{
+        isPremium,
+        offering,
+        loading,
+        error,
+        configured,
+        currentPlanLabel: effectivePlanLabel,
+        isUsingDevOverride: __DEV_OVERRIDE_ENABLED__ && Boolean(devOverridePlan),
+        devOverridePlan,
+        monthlyPackage: packageSet.monthly,
+        yearlyPackage: packageSet.yearly,
+        purchasePackage,
+        restorePurchases,
+        refreshSubscriptionStatus,
+        setRealTier,
+        setDevOverridePlan,
+        clearDevOverridePlan,
+      }}
+    >
+      {children}
+    </SubscriptionContext.Provider>
+  );
+}
+
+export function useSubscriptionContext() {
+  const context = useContext(SubscriptionContext);
+  if (!context) {
+    throw new Error("useSubscriptionContext must be used within SubscriptionProvider");
+  }
+
+  return context;
+}
