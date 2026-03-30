@@ -6,12 +6,10 @@ import type {
   PurchasesOffering,
   PurchasesOfferings,
   PurchasesPackage,
-  RevenueCatPaywallResult,
 } from "@/types/purchases";
 
 let configured = false;
 let purchasesModule: any | null | undefined;
-let purchasesUiModule: any | null | undefined;
 
 function loadPurchasesModule() {
   if (purchasesModule !== undefined) {
@@ -26,21 +24,6 @@ function loadPurchasesModule() {
   }
 
   return purchasesModule;
-}
-
-function loadPurchasesUiModule() {
-  if (purchasesUiModule !== undefined) {
-    return purchasesUiModule;
-  }
-
-  try {
-    const dynamicRequire = new Function("moduleName", "return require(moduleName);") as (name: string) => any;
-    purchasesUiModule = dynamicRequire("react-native-purchases-ui");
-  } catch {
-    purchasesUiModule = null;
-  }
-
-  return purchasesUiModule;
 }
 
 function getRevenueCatApiKey() {
@@ -161,10 +144,10 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
 
 export function findPremiumPackage(offering: PurchasesOffering): PurchasesPackage | null {
   return (
-    offering.monthly ??
     offering.annual ??
-    offering.availablePackages.find((pkg) => pkg.identifier === PACKAGE_IDS.premiumMonthly) ??
+    offering.monthly ??
     offering.availablePackages.find((pkg) => pkg.identifier === PACKAGE_IDS.premiumAnnual) ??
+    offering.availablePackages.find((pkg) => pkg.identifier === PACKAGE_IDS.premiumMonthly) ??
     offering.availablePackages[0] ??
     null
   );
@@ -231,29 +214,4 @@ export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerIn
   }
 
   return customerInfo;
-}
-
-export function isRevenueCatPaywallAvailable() {
-  return Boolean(loadPurchasesUiModule());
-}
-
-export async function presentRevenueCatPaywall(): Promise<boolean> {
-  const RevenueCatUI = loadPurchasesUiModule();
-
-  if (!configured || !RevenueCatUI?.presentPaywall || !RevenueCatUI?.PAYWALL_RESULT) {
-    return false;
-  }
-
-  const paywallResult = (await RevenueCatUI.presentPaywall()) as RevenueCatPaywallResult;
-
-  switch (paywallResult) {
-    case RevenueCatUI.PAYWALL_RESULT.PURCHASED:
-    case RevenueCatUI.PAYWALL_RESULT.RESTORED:
-      return true;
-    case RevenueCatUI.PAYWALL_RESULT.NOT_PRESENTED:
-    case RevenueCatUI.PAYWALL_RESULT.ERROR:
-    case RevenueCatUI.PAYWALL_RESULT.CANCELLED:
-    default:
-      return false;
-  }
 }

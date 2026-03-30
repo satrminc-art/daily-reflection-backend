@@ -5,39 +5,46 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "reflections:tool": "node --no-warnings tools/reflection-library-tool.ts",
+    "localization:report": "node --no-warnings tools/localization-coverage-report.ts"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^1.23.1",
-    "@react-native-community/datetimepicker": "^8.2.0",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-community/datetimepicker": "8.2.0",
     "@react-native-community/slider": "4.5.5",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
     "expo": "~52.0.0",
     "expo-asset": "~11.0.5",
+    "expo-dev-client": "~5.0.20",
     "expo-file-system": "~18.0.12",
+    "expo-haptics": "~14.0.1",
     "expo-linear-gradient": "~14.0.1",
+    "expo-localization": "~16.0.1",
     "expo-notifications": "~0.29.8",
     "expo-print": "~14.0.3",
+    "expo-secure-store": "~14.0.1",
     "expo-sharing": "~13.0.1",
     "expo-status-bar": "~2.0.1",
     "openai": "^6.32.0",
     "react": "18.3.1",
-    "react-native": "0.76.3",
+    "react-native": "0.76.9",
     "react-native-purchases": "^8.9.6",
     "react-native-safe-area-context": "4.12.0",
-    "react-native-screens": "~4.1.0",
-    "react-native-view-shot": "4.0.2"
+    "react-native-screens": "~4.4.0",
+    "react-native-view-shot": "~4.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@types/react": "~18.3.12",
     "babel-plugin-module-resolver": "^5.0.2",
     "babel-preset-expo": "^12.0.0",
+    "eas-cli": "^18.4.0",
     "typescript": "^5.6.3"
   }
 }

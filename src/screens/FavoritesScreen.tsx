@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { Alert, StyleSheet, TextInput, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { CategoryChip } from "@/components/CategoryChip";
 import { EditorialHeader } from "@/components/EditorialHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { PremiumGateCard } from "@/components/premium/PremiumGateCard";
+import { PrimaryButton } from "@/components/PrimaryButton";
+import { UpgradeCard } from "@/components/premium/UpgradeCard";
 import { ReflectionListItem } from "@/components/ReflectionListItem";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAppContext } from "@/context/AppContext";
@@ -12,12 +13,13 @@ import { REFLECTION_CATEGORIES } from "@/data/categories";
 import { useAppStrings } from "@/hooks/useAppStrings";
 import { useMembership } from "@/hooks/useMembership";
 import { useTypography } from "@/hooks/useTypography";
+import { getPremiumPromptCopy } from "@/services/premiumPromptService";
 import { FREE_SAVED_LIMIT } from "@/utils/membershipHelpers";
 import { ReflectionCategory } from "@/types/reflection";
 import { palette } from "@/utils/theme";
 
 export function FavoritesScreen() {
-  const { colorScheme, favorites, toggleFavorite } = useAppContext();
+  const { colorScheme, favorites, toggleFavorite, appState, markPremiumPromptOpened } = useAppContext();
   const { t } = useAppStrings();
   const membership = useMembership();
   const navigation = useNavigation<any>();
@@ -36,8 +38,12 @@ export function FavoritesScreen() {
   const hasFullSavedAccess = membership.hasFeature("unlimited-saved");
   const hasSavedSearch = membership.hasFeature("search-filter");
   const hasAdvancedSavedManagement = membership.hasFeature("advanced-saved-management");
+  const hasPersonalCollections = membership.hasFeature("personal-collections");
+  const collectionsPrompt = useMemo(
+    () => getPremiumPromptCopy("collections", appState.preferredLanguage),
+    [appState.preferredLanguage],
+  );
   const visibleFavorites = hasFullSavedAccess ? filteredFavorites : filteredFavorites.slice(0, FREE_SAVED_LIMIT);
-  const isTrimmed = !hasFullSavedAccess && filteredFavorites.length > FREE_SAVED_LIMIT;
   const hasFiltersApplied = Boolean(query.trim()) || Boolean(selectedCategory);
 
   return (
@@ -47,6 +53,49 @@ export function FavoritesScreen() {
         title={t("favorites.title")}
         subtitle={t("favorites.subtitle")}
       />
+
+      <View style={styles.collectionActionWrap}>
+        {hasPersonalCollections ? (
+          <View
+            style={[
+              styles.collectionsCard,
+              {
+                backgroundColor: colors.elevatedSurface,
+                borderColor: colors.borderStrong,
+                shadowColor: colors.shadow,
+              },
+            ]}
+          >
+            <Text style={[styles.collectionsTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
+              {t("collections.title")}
+            </Text>
+            <Text style={[styles.collectionsBody, { color: colors.secondaryText, fontFamily: typography.body }]}>
+              {t("collections.subtitle")}
+            </Text>
+            <PrimaryButton
+              label={t("collections.addToPersonalCollectionsAction")}
+              onPress={() => navigation.navigate("Collections")}
+              variant="secondary"
+              style={styles.collectionsButton}
+            />
+          </View>
+        ) : (
+          <UpgradeCard
+            title={collectionsPrompt.title}
+            body={collectionsPrompt.body}
+            actionLabel={collectionsPrompt.cta}
+            onPress={() => {
+              void markPremiumPromptOpened("collections");
+              navigation.navigate("Membership");
+            }}
+          />
+        )}
+        {!hasPersonalCollections ? (
+          <Text style={[styles.savedCountLine, { color: colors.secondaryText, fontFamily: typography.body }]}>
+            {t("favorites.savedCountLinePrefix")} {favorites.length} {t("favorites.savedCountLineSuffix")}
+          </Text>
+        ) : null}
+      </View>
 
       {hasSavedSearch ? (
         <>
@@ -58,9 +107,9 @@ export function FavoritesScreen() {
             style={[
               styles.search,
               {
-                backgroundColor: colors.surface,
+                backgroundColor: colors.inputSurface,
                 color: colors.primaryText,
-                borderColor: colors.border,
+                borderColor: colors.borderStrong,
                 fontFamily: typography.body,
               },
             ]}
@@ -76,14 +125,7 @@ export function FavoritesScreen() {
             ))}
           </View>
         </>
-      ) : (
-        <PremiumGateCard
-          title={t("membership.lockedSavedTitle")}
-          message={t("membership.lockedSavedBody")}
-          actionLabel={t("settings.upgradeAction")}
-          onPress={() => navigation.navigate("Membership")}
-        />
-      )}
+      ) : null}
 
       {visibleFavorites.length ? (
         visibleFavorites.map((reflection) => (
@@ -98,7 +140,9 @@ export function FavoritesScreen() {
             }
             secondaryActionLabel={hasAdvancedSavedManagement ? t("favorites.removeAction") : undefined}
             onSecondaryAction={
-              hasAdvancedSavedManagement
+              hasPersonalCollections
+                ? () => navigation.navigate("Collections", { reflectionId: reflection.id, date: reflection.date })
+                : hasAdvancedSavedManagement
                 ? () =>
                     Alert.alert(t("favorites.deleteConfirmTitle"), t("favorites.deleteConfirmMessage"), [
                       { text: t("common.cancel"), style: "cancel" },
@@ -123,19 +167,45 @@ export function FavoritesScreen() {
         />
       )}
 
-      {isTrimmed ? (
-        <PremiumGateCard
-          title={t("favorites.premiumTitle")}
-          message={t("favorites.premiumMessage")}
-          actionLabel={t("settings.upgradeAction")}
-          onPress={() => navigation.navigate("Membership")}
-        />
-      ) : null}
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  collectionActionWrap: {
+    marginBottom: 16,
+  },
+  collectionsCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 22,
+    gap: 10,
+    width: "100%",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 1,
+  },
+  collectionsTitle: {
+    fontSize: 22,
+    lineHeight: 30,
+    fontWeight: "600",
+    letterSpacing: 0.25,
+  },
+  collectionsBody: {
+    fontSize: 14,
+    lineHeight: 23,
+  },
+  collectionsButton: {
+    marginTop: 6,
+  },
+  savedCountLine: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+    marginTop: 10,
+    marginHorizontal: 10,
+  },
   search: {
     borderRadius: 20,
     borderWidth: 1,

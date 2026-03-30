@@ -9,6 +9,17 @@ export interface PaperThemePreset<T extends string> extends PremiumPreset<T> {
   swatch: string;
 }
 
+export interface AppBackgroundPreset<T extends string> extends PremiumPreset<T> {
+  swatch: string;
+}
+
+export interface AppearancePreset<T extends string> extends PremiumPreset<T> {
+  appBackground: string;
+  paper: string;
+  text: string;
+  note?: "recommended" | "balanced" | "warm-calm" | "readable" | "quiet";
+}
+
 export interface TypographyPreset<T extends string> extends PremiumPreset<T> {
   specimen: string;
 }
@@ -66,11 +77,56 @@ export const TYPOGRAPHY_PRESETS = [
   {
     id: "subtle-typewriter",
     name: "Subtle Typewriter",
-    description: "A restrained monospaced accent for future premium themes.",
+    description: "A restrained monospaced accent for quieter premium themes.",
     specimen: "A gentler pace",
     availability: "future_premium",
   },
 ] as const satisfies readonly TypographyPreset<string>[];
+
+export const APP_BACKGROUND_PRESETS = [
+  {
+    id: "ivory",
+    name: "Ivory",
+    description: "A bright calm base with almost no tint.",
+    swatch: "#FFFFFF",
+    availability: "future_premium",
+  },
+  {
+    id: "warm-paper",
+    name: "Warm Paper",
+    description: "A soft cream ground with a little more warmth.",
+    swatch: "#F5F1EB",
+    availability: "future_premium",
+  },
+  {
+    id: "sand",
+    name: "Sand",
+    description: "A quiet beige foundation with gentle depth.",
+    swatch: "#E9DFD2",
+    availability: "future_premium",
+  },
+  {
+    id: "walnut",
+    name: "Walnut",
+    description: "A deep brown desk-like tone for a richer backdrop.",
+    swatch: "#5A4638",
+    availability: "future_premium",
+  },
+  {
+    id: "charcoal",
+    name: "Charcoal",
+    description: "A muted charcoal field with soft contrast.",
+    swatch: "#413A36",
+    availability: "future_premium",
+  },
+  {
+    id: "night-grey",
+    name: "Night Grey",
+    description: "A quieter grey with a slightly cooler dusk feel.",
+    swatch: "#4A4A4E",
+    availability: "future_premium",
+  },
+] as const satisfies readonly AppBackgroundPreset<string>[];
 
 export const PAGE_STYLE_PRESETS = [
   {
@@ -96,6 +152,111 @@ export const PAGE_STYLE_PRESETS = [
   },
 ] as const satisfies readonly PageStylePreset<string>[];
 
+export const APPEARANCE_PRESETS = [
+  {
+    id: "classic-paper",
+    name: "Classic Paper",
+    description: "The original calm balance of paper, space, and restraint.",
+    appBackground: "#F5F3EF",
+    paper: "#E9E2D8",
+    text: "#2A2623",
+    note: "recommended",
+    availability: "future_premium",
+  },
+  {
+    id: "warm-ivory-style",
+    name: "Warm Ivory",
+    description: "A warm cream atmosphere with soft literary contrast.",
+    appBackground: "#F7F1E8",
+    paper: "#EADFCF",
+    text: "#3A2F28",
+    note: "warm-calm",
+    availability: "future_premium",
+  },
+  {
+    id: "stone-paper-style",
+    name: "Stone Paper",
+    description: "Mineral neutrals for a quieter, more architectural page.",
+    appBackground: "#ECEBE8",
+    paper: "#DCDAD4",
+    text: "#2E2E2E",
+    note: "balanced",
+    availability: "future_premium",
+  },
+  {
+    id: "soft-rose",
+    name: "Soft Rose",
+    description: "A faint rose haze with softened editorial warmth.",
+    appBackground: "#F4E9EC",
+    paper: "#EAD6DB",
+    text: "#3A2A2F",
+    note: "warm-calm",
+    availability: "future_premium",
+  },
+  {
+    id: "mist-grey",
+    name: "Mist Grey",
+    description: "A pale grey atmosphere with quiet clarity.",
+    appBackground: "#F2F2F2",
+    paper: "#E0E0E0",
+    text: "#2C2C2C",
+    note: "readable",
+    availability: "future_premium",
+  },
+  {
+    id: "midnight-ink",
+    name: "Midnight Ink",
+    description: "A duskier desk tone with softened paper lift.",
+    appBackground: "#1C1C1E",
+    paper: "#2C2C2E",
+    text: "#F2F2F2",
+    note: "readable",
+    availability: "future_premium",
+  },
+  {
+    id: "olive-note",
+    name: "Olive Note",
+    description: "A muted olive field with restrained paper calm.",
+    appBackground: "#EEF1EA",
+    paper: "#DDE3D6",
+    text: "#2F332B",
+    note: "balanced",
+    availability: "future_premium",
+  },
+  {
+    id: "sand-journal",
+    name: "Sand Journal",
+    description: "A grounded beige rhythm with journal-like warmth.",
+    appBackground: "#F6EBDD",
+    paper: "#EEDCC7",
+    text: "#3A3128",
+    note: "warm-calm",
+    availability: "future_premium",
+  },
+  {
+    id: "quiet-blue",
+    name: "Quiet Blue",
+    description: "A softened blue-grey for cooler, reflective pages.",
+    appBackground: "#EAF1F6",
+    paper: "#D6E3EC",
+    text: "#2A3440",
+    note: "quiet",
+    availability: "future_premium",
+  },
+  {
+    id: "charcoal-paper",
+    name: "Charcoal Paper",
+    description: "A dark paper atmosphere with elegant off-white reading tone.",
+    appBackground: "#2B2B2B",
+    paper: "#3A3A3A",
+    text: "#F5F5F5",
+    note: "balanced",
+    availability: "future_premium",
+  },
+] as const satisfies readonly AppearancePreset<string>[];
+
 export type PaperThemePresetId = (typeof PAPER_THEME_PRESETS)[number]["id"];
+export type AppBackgroundPresetId = (typeof APP_BACKGROUND_PRESETS)[number]["id"];
 export type TypographyPresetId = (typeof TYPOGRAPHY_PRESETS)[number]["id"];
 export type PageStylePresetId = (typeof PAGE_STYLE_PRESETS)[number]["id"];
+export type AppearancePresetId = (typeof APPEARANCE_PRESETS)[number]["id"];

@@ -16,7 +16,7 @@ interface Props {
 
 export function PremiumFeatureList({ category, features }: Props) {
   const { colorScheme } = useAppContext();
-  const { membershipFeatureCategoryLabel, membershipFeatureLabel, t } = useAppStrings();
+  const { membershipFeatureCategoryLabel, membershipFeatureLabel } = useAppStrings();
   const colors = palette[colorScheme];
   const typography = useTypography();
 
@@ -31,9 +31,6 @@ export function PremiumFeatureList({ category, features }: Props) {
           <View style={styles.copyWrap}>
             <Text style={[styles.label, { color: colors.secondaryText, fontFamily: typography.body }]}>
               {membershipFeatureLabel(feature.id)}
-            </Text>
-            <Text style={[styles.status, { color: colors.tertiaryText, fontFamily: typography.meta }]}>
-              {feature.live ? t("membership.liveNow") : t("membership.preparedNext")}
             </Text>
           </View>
         </View>
@@ -59,7 +56,6 @@ const styles = StyleSheet.create({
   },
   copyWrap: {
     flex: 1,
-    gap: 2,
   },
   dot: {
     width: 9,
@@ -71,11 +67,5 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     lineHeight: 21,
-  },
-  status: {
-    fontSize: 11,
-    lineHeight: 16,
-    textTransform: "uppercase",
-    letterSpacing: 1.1,
   },
 });

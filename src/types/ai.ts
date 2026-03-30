@@ -26,6 +26,7 @@ export type ReflectionFollowUpErrorCode =
   | "method_not_allowed"
   | "invalid_request"
   | "daily_limit_reached"
+  | "rate_limited"
   | "missing_api_key"
   | "openai_error"
   | "internal_error";

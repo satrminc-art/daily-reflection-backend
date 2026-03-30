@@ -40,10 +40,3 @@ export interface PurchasesOfferings {
   current: PurchasesOffering | null;
   all: Record<string, PurchasesOffering>;
 }
-
-export type RevenueCatPaywallResult =
-  | "NOT_PRESENTED"
-  | "ERROR"
-  | "CANCELLED"
-  | "PURCHASED"
-  | "RESTORED";

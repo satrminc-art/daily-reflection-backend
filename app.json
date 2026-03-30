@@ -1,27 +1,35 @@
 {
   "expo": {
-    "name": "Daily Reflection",
-    "slug": "daily-reflection",
+    "name": "Daytri",
+    "slug": "daytri",
     "version": "1.0.0",
+    "icon": "./assets/daytri-icon.png",
     "platforms": [
       "ios",
       "android"
     ],
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "scheme": "dailyreflection",
+    "scheme": "daytri",
     "assetBundlePatterns": [
       "**/*"
     ],
+    "splash": {
+      "image": "./assets/daytri-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5F1EB"
+    },
     "ios": {
-      "bundleIdentifier": "com.dailyreflection.app",
-      "supportsTablet": true
+      "bundleIdentifier": "com.samuel.daytri",
+      "supportsTablet": true,
+      "icon": "./assets/daytri-icon.png"
     },
     "android": {
-      "package": "com.dailyreflection.app",
+      "package": "com.samuel.daytri",
       "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
-        "backgroundColor": "#E8E1D6"
+        "foregroundImage": "./assets/daytri-icon.png",
+        "backgroundColor": "#F5F1EB"
       }
     },
     "androidStatusBar": {
@@ -40,7 +48,10 @@
           "color": "#A68F72"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      "expo-localization"
     ]
   }
 }

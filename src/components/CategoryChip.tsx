@@ -24,12 +24,12 @@ export function CategoryChip({ category, selected, onPress }: Props) {
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? colors.primaryText : colors.surface,
-          borderColor: selected ? colors.primaryText : colors.border,
+          backgroundColor: selected ? colors.controlActiveSurface : colors.inputSurface,
+          borderColor: selected ? colors.borderStrong : colors.border,
         },
       ]}
     >
-      <Text style={[styles.label, { color: selected ? colors.background : colors.primaryText, fontFamily: typography.meta }]}>
+      <Text style={[styles.label, { color: selected ? colors.controlActiveText : colors.primaryText, fontFamily: typography.meta }]}>
         {categoryLabel(category)}
       </Text>
     </Pressable>

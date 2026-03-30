@@ -34,6 +34,7 @@ function buildUserPrompt(input: ReflectionFollowUpRequest) {
 export async function generateReflectionFollowUps(
   input: ReflectionFollowUpRequest,
 ): Promise<ReflectionFollowUpData> {
+  // Server-only: never import this module into Expo client code.
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is missing.");

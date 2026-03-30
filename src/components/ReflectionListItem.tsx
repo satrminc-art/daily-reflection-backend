@@ -192,6 +192,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   topMeta: {
+    flexShrink: 1,
+    minWidth: 0,
     alignItems: "flex-end",
     gap: 4,
   },
@@ -229,7 +231,7 @@ const styles = StyleSheet.create({
   },
   editorialTopRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
   },
@@ -245,6 +247,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 1.2,
     textTransform: "uppercase",
+    flexShrink: 1,
+    textAlign: "right",
   },
   editorialQuestion: {
     fontSize: 24,
@@ -265,7 +269,7 @@ const styles = StyleSheet.create({
   },
   ledgerHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 10,
     paddingBottom: 10,
     borderBottomWidth: 1,
@@ -284,6 +288,7 @@ const styles = StyleSheet.create({
   },
   ledgerHeaderMeta: {
     flex: 1,
+    minWidth: 0,
     alignItems: "flex-end",
     gap: 4,
   },

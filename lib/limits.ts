@@ -6,35 +6,63 @@ const DAILY_LIMITS: Record<MembershipTier, number> = {
   lifelong: 10,
 };
 
-type UsageEntry = {
+const REQUEST_COOLDOWN_MS = 12_000;
+const IP_DAILY_LIMIT = 40;
+
+type DailyUsageEntry = {
   count: number;
   expiresAt: number;
 };
 
-const usageStore = new Map<string, UsageEntry>();
+type CooldownEntry = {
+  expiresAt: number;
+};
+
+const dailyUsageStore = new Map<string, DailyUsageEntry>();
+const cooldownStore = new Map<string, CooldownEntry>();
 
 function getUtcDateKey(now: Date) {
   return now.toISOString().slice(0, 10);
-}
-
-function pruneExpiredEntries(now: number) {
-  for (const [key, entry] of usageStore.entries()) {
-    if (entry.expiresAt <= now) {
-      usageStore.delete(key);
-    }
-  }
 }
 
 function getExpiryForDateKey(dateKey: string) {
   return new Date(`${dateKey}T23:59:59.999Z`).getTime();
 }
 
+function pruneExpiredEntries(nowMs: number) {
+  for (const [key, entry] of dailyUsageStore.entries()) {
+    if (entry.expiresAt <= nowMs) {
+      dailyUsageStore.delete(key);
+    }
+  }
+
+  for (const [key, entry] of cooldownStore.entries()) {
+    if (entry.expiresAt <= nowMs) {
+      cooldownStore.delete(key);
+    }
+  }
+}
+
+function getUsageEntry(key: string) {
+  return dailyUsageStore.get(key);
+}
+
+function getRemainingCooldown(key: string, nowMs: number) {
+  const entry = cooldownStore.get(key);
+  if (!entry || entry.expiresAt <= nowMs) {
+    return 0;
+  }
+
+  return entry.expiresAt - nowMs;
+}
+
 export function getDailyLimitForEntitlement(entitlement: MembershipTier) {
   return DAILY_LIMITS[entitlement];
 }
 
-export async function consumeFollowUpQuota(args: {
-  identifier: string;
+export async function enforceFollowUpLimits(args: {
+  ipIdentifier: string;
+  userIdentifier?: string;
   entitlement: MembershipTier;
   now?: Date;
 }) {
@@ -43,30 +71,84 @@ export async function consumeFollowUpQuota(args: {
   pruneExpiredEntries(nowMs);
 
   const dateKey = getUtcDateKey(now);
-  const storeKey = `${dateKey}:${args.entitlement}:${args.identifier}`;
-  const existing = usageStore.get(storeKey);
-  const limit = getDailyLimitForEntitlement(args.entitlement);
+  const dateExpiry = getExpiryForDateKey(dateKey);
+  const identifiers = [args.ipIdentifier, args.userIdentifier].filter(Boolean) as string[];
 
-  if (existing && existing.count >= limit) {
+  let maxCooldownRemaining = 0;
+  for (const identifier of identifiers) {
+    maxCooldownRemaining = Math.max(maxCooldownRemaining, getRemainingCooldown(identifier, nowMs));
+  }
+
+  if (maxCooldownRemaining > 0) {
     return {
       allowed: false as const,
-      remaining: 0,
-      limit,
-      resetAt: new Date(existing.expiresAt).toISOString(),
+      code: "rate_limited" as const,
+      retryAfterMs: maxCooldownRemaining,
+      resetAt: new Date(nowMs + maxCooldownRemaining).toISOString(),
     };
   }
 
-  const nextCount = (existing?.count ?? 0) + 1;
-  const expiresAt = existing?.expiresAt ?? getExpiryForDateKey(dateKey);
-  usageStore.set(storeKey, {
-    count: nextCount,
-    expiresAt,
+  const ipUsageKey = `${dateKey}:ip:${args.ipIdentifier}`;
+  const ipUsage = getUsageEntry(ipUsageKey);
+  if ((ipUsage?.count ?? 0) >= IP_DAILY_LIMIT) {
+    return {
+      allowed: false as const,
+      code: "rate_limited" as const,
+      retryAfterMs: dateExpiry - nowMs,
+      resetAt: new Date(dateExpiry).toISOString(),
+    };
+  }
+
+  const userLimit = getDailyLimitForEntitlement(args.entitlement);
+  if (args.userIdentifier) {
+    const userUsageKey = `${dateKey}:user:${args.userIdentifier}`;
+    const userUsage = getUsageEntry(userUsageKey);
+    if ((userUsage?.count ?? 0) >= userLimit) {
+      return {
+        allowed: false as const,
+        code: "daily_limit_reached" as const,
+        retryAfterMs: dateExpiry - nowMs,
+        resetAt: new Date(dateExpiry).toISOString(),
+      };
+    }
+
+    dailyUsageStore.set(userUsageKey, {
+      count: (userUsage?.count ?? 0) + 1,
+      expiresAt: userUsage?.expiresAt ?? dateExpiry,
+    });
+  } else {
+    const fallbackUsageKey = `${dateKey}:anon:${args.ipIdentifier}:${args.entitlement}`;
+    const fallbackUsage = getUsageEntry(fallbackUsageKey);
+    if ((fallbackUsage?.count ?? 0) >= userLimit) {
+      return {
+        allowed: false as const,
+        code: "daily_limit_reached" as const,
+        retryAfterMs: dateExpiry - nowMs,
+        resetAt: new Date(dateExpiry).toISOString(),
+      };
+    }
+
+    dailyUsageStore.set(fallbackUsageKey, {
+      count: (fallbackUsage?.count ?? 0) + 1,
+      expiresAt: fallbackUsage?.expiresAt ?? dateExpiry,
+    });
+  }
+
+  dailyUsageStore.set(ipUsageKey, {
+    count: (ipUsage?.count ?? 0) + 1,
+    expiresAt: ipUsage?.expiresAt ?? dateExpiry,
   });
+
+  for (const identifier of identifiers) {
+    cooldownStore.set(identifier, {
+      expiresAt: nowMs + REQUEST_COOLDOWN_MS,
+    });
+  }
 
   return {
     allowed: true as const,
-    remaining: Math.max(limit - nextCount, 0),
-    limit,
-    resetAt: new Date(expiresAt).toISOString(),
+    code: null,
+    retryAfterMs: 0,
+    resetAt: new Date(dateExpiry).toISOString(),
   };
 }

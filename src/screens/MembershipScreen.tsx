@@ -1,32 +1,25 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { MembershipCard } from "@/components/membership/MembershipCard";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { PlanBadge } from "@/components/membership/PlanBadge";
-import { PremiumFeatureList } from "@/components/membership/PremiumFeatureList";
-import { ScreenContainer } from "@/components/ScreenContainer";
-import { MEMBERSHIP_FEATURE_CATEGORIES, MEMBERSHIP_FEATURES } from "@/constants/premiumFeatures";
+import { PrimaryButton } from "@/components/PrimaryButton";
 import { useAppContext } from "@/context/AppContext";
 import { useAppStrings } from "@/hooks/useAppStrings";
 import { useMembership } from "@/hooks/useMembership";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useTypography } from "@/hooks/useTypography";
+import { RootStackParamList } from "@/navigation/types";
+import { findLifelongPackage, findPremiumPackage, getCurrentOffering } from "@/services/purchases";
 import { PurchaseTarget } from "@/types/membership";
 import type { PurchasesPackage } from "@/types/purchases";
-import { findLifelongPackage, findPremiumPackage, getCurrentOffering } from "@/services/purchases";
 import { palette } from "@/utils/theme";
 
-export function MembershipScreen() {
-  const navigation = useNavigation<any>();
-  const { colorScheme } = useAppContext();
-  const {
-    t,
-    subscriptionPlanMeta,
-    currentLabel,
-    membershipFeatureCategoryDescription,
-    membershipPlanNote,
-    membershipStateBody,
-    } = useAppStrings();
+type Props = NativeStackScreenProps<RootStackParamList, "Membership">;
+
+export function MembershipScreen({ navigation }: Props) {
+  const { appState, colorScheme, markInitialPremiumOfferSeen } = useAppContext();
+  const { t, currentLabel } = useAppStrings();
   const membership = useMembership();
   const subscription = useSubscription();
   const colors = palette[colorScheme];
@@ -35,15 +28,6 @@ export function MembershipScreen() {
   const [lifelongPackage, setLifelongPackage] = useState<PurchasesPackage | null>(null);
   const [screenLoading, setScreenLoading] = useState(true);
   const [purchaseLoading, setPurchaseLoading] = useState<PurchaseTarget | null>(null);
-
-  const groupedFeatures = useMemo(
-    () =>
-      MEMBERSHIP_FEATURE_CATEGORIES.map((category) => ({
-        category,
-        features: MEMBERSHIP_FEATURES.filter((feature) => feature.category === category && feature.premiumOnly),
-      })),
-    [],
-  );
 
   useEffect(() => {
     let mounted = true;
@@ -70,19 +54,64 @@ export function MembershipScreen() {
       }
     }
 
-    loadOffering().catch((error) => {
-      if (__DEV__) {
-        console.warn("Failed to prepare membership screen", error);
-      }
-    });
+    void loadOffering();
 
     return () => {
       mounted = false;
     };
   }, []);
 
-  const premiumPriceText = premiumPackage?.product.priceString;
-  const lifelongPriceText = lifelongPackage?.product.priceString;
+  const isLaunchOffer = !appState.hasSeenInitialPremiumOffer;
+  const currentPlan = membership.currentPlanLabel;
+  const isFreemium = currentPlan === "Freemium";
+  const isPremium = currentPlan === "Premium";
+  const isLifelong = currentPlan === "Lifelong";
+  const yearlyPremiumPackage = subscription.yearlyPackage ?? premiumPackage;
+  const premiumPrice = yearlyPremiumPackage?.product.priceString ?? premiumPackage?.product.priceString ?? null;
+  const lifelongPrice = lifelongPackage?.product.priceString ?? null;
+
+  const premiumBenefits = [
+    t("membership.benefitSavePages"),
+    t("membership.benefitCollections"),
+    t("membership.benefitStyle"),
+    t("membership.benefitUnlimited"),
+    t("membership.benefitNothingLost"),
+  ];
+
+  const premiumButtonLabel = useMemo(() => {
+    if (purchaseLoading === "premium") {
+      return t("common.preparing");
+    }
+    if (isPremium) {
+      return t("membership.currentPlanCta");
+    }
+    if (isLifelong) {
+      return t("membership.includedWithLifelong");
+    }
+    return t("membership.choosePremium");
+  }, [isLifelong, isPremium, purchaseLoading, t]);
+
+  const lifelongButtonLabel = useMemo(() => {
+    if (purchaseLoading === "lifelong") {
+      return t("common.preparing");
+    }
+    if (isLifelong) {
+      return t("membership.currentPlanCta");
+    }
+    return t("membership.chooseLifelong");
+  }, [isLifelong, purchaseLoading, t]);
+
+  async function finishLaunchFlow() {
+    if (!isLaunchOffer) {
+      return;
+    }
+
+    await markInitialPremiumOfferSeen();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Today" }],
+    });
+  }
 
   async function handlePlanSelection(targetPlan: PurchaseTarget) {
     try {
@@ -90,8 +119,11 @@ export function MembershipScreen() {
       await membership.selectPlan(targetPlan);
       Alert.alert(
         t("membership.purchaseSuccessTitle"),
-        targetPlan === "premium" ? t("membership.purchaseSuccessPremium") : t("membership.purchaseSuccessLifelong"),
+        targetPlan === "premium"
+          ? t("membership.purchaseSuccessPremium")
+          : t("membership.purchaseSuccessLifelong"),
       );
+      await finishLaunchFlow();
     } catch (error: any) {
       if (!error?.userCancelled) {
         Alert.alert(t("membership.purchaseErrorTitle"), t("membership.purchaseErrorBody"));
@@ -101,166 +133,217 @@ export function MembershipScreen() {
     }
   }
 
-  function getPlanAction(plan: "Freemium" | "Premium" | "Lifelong") {
-    if (membership.currentPlanLabel === "Freemium") {
-      if (plan === "Premium") {
-        return {
-          label: purchaseLoading === "premium" ? t("common.preparing") : t("membership.choosePremium"),
-          onPress: () => {
-            handlePlanSelection("premium").catch((error) => {
-              console.warn("Failed to select Premium plan", error);
-            });
-          },
-        };
-      }
-
-      if (plan === "Lifelong") {
-        return {
-          label: purchaseLoading === "lifelong" ? t("common.preparing") : t("membership.chooseLifelong"),
-          onPress: () => {
-            handlePlanSelection("lifelong").catch((error) => {
-              console.warn("Failed to select Lifelong plan", error);
-            });
-          },
-        };
-      }
+  async function handleRestore() {
+    try {
+      await membership.restoreMembership();
+      Alert.alert(t("membership.restoreSuccessTitle"), t("membership.restoreSuccessBody"));
+      await finishLaunchFlow();
+    } catch (error) {
+      Alert.alert(t("membership.restoreErrorTitle"), t("membership.restoreErrorBody"));
     }
-
-    if (membership.currentPlanLabel === "Premium" && plan === "Lifelong") {
-      return {
-        label: purchaseLoading === "lifelong" ? t("common.preparing") : t("membership.unlockLifelong"),
-        onPress: () => {
-          handlePlanSelection("lifelong").catch((error) => {
-            console.warn("Failed to select Lifelong plan", error);
-          });
-        },
-      };
-    }
-
-    return null;
   }
 
+  async function handleContinueFree() {
+    if (isLaunchOffer) {
+      await finishLaunchFlow();
+      return;
+    }
+
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate("Today");
+  }
+
+  const premiumDisabled = purchaseLoading !== null || isPremium || isLifelong;
+  const lifelongDisabled = purchaseLoading !== null || isLifelong;
+
   return (
-    <ScreenContainer scroll>
-      <View style={styles.header}>
-        <Text style={[styles.eyebrow, { color: colors.accent }]}>{t("membership.eyebrow")}</Text>
-        <Text style={[styles.title, { color: colors.primaryText, fontFamily: typography.display }]}>{t("membership.title")}</Text>
-        <Text style={[styles.subtitle, { color: colors.secondaryText }]}>{t("membership.subtitle")}</Text>
-      </View>
-
-      <View style={styles.cardStack}>
-        {(["Freemium", "Premium", "Lifelong"] as const).map((plan) => (
-          (() => {
-            const planAction = getPlanAction(plan);
-
-            return (
-              <MembershipCard
-                key={plan}
-                plan={plan}
-                summary={subscriptionPlanMeta(plan).summary}
-                note={membershipPlanNote(plan)}
-                priceText={plan === "Premium" ? premiumPriceText : plan === "Lifelong" ? lifelongPriceText : undefined}
-                planBadge={plan === "Lifelong" ? t("membership.lifelongBadge") : undefined}
-                active={membership.currentPlanLabel === plan}
-                activeLabel={currentLabel()}
-                actionLabel={planAction?.label}
-                onActionPress={planAction?.onPress}
-                actionDisabled={purchaseLoading !== null}
-              />
-            );
-          })()
-        ))}
-      </View>
-
-      {(screenLoading || membership.loading) && (
-        <View style={[styles.loadingCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <ActivityIndicator color={colors.primaryText} />
-        </View>
-      )}
-
-      <View style={[styles.stateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.stateHeader}>
-          <Text style={[styles.stateTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
-            {t("membership.stateTitle")}
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.appBackground }]}>
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View style={styles.header}>
+          <Text style={[styles.eyebrow, { color: colors.accent, fontFamily: typography.meta }]}>
+            {t("membership.eyebrow")}
           </Text>
-          <PlanBadge label={membership.currentPlanLabel} subtle={!membership.hasPremiumAccess} />
-        </View>
-        <Text style={[styles.stateBody, { color: colors.secondaryText }]}>
-          {membershipStateBody(membership.currentPlanLabel)}
-        </Text>
-        {membership.isUsingDevOverride ? (
-          <Text style={[styles.stateNote, { color: colors.tertiaryText }]}>{t("membership.devStateNote")}</Text>
-        ) : null}
-      </View>
-
-      <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
-            {t("membership.premiumIncludedTitle")}
+          <Text style={[styles.title, { color: colors.primaryText, fontFamily: typography.display }]}>
+            {t("membership.title")}
           </Text>
-          {membership.hasPremiumAccess ? <PlanBadge label={membership.currentPlanLabel} /> : null}
+          <Text style={[styles.subtitle, { color: colors.secondaryText, fontFamily: typography.body }]}>
+            {t("membership.heroLine")}
+          </Text>
         </View>
 
-        <View style={styles.featureGroups}>
-          {groupedFeatures.map(({ category, features }) => (
-            <View key={category} style={styles.groupWrap}>
-              <Text style={[styles.groupDescription, { color: colors.tertiaryText }]}>
-                {membershipFeatureCategoryDescription(category)}
+        {(screenLoading || membership.loading) && (
+          <View style={[styles.loadingCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <ActivityIndicator color={colors.primaryText} />
+          </View>
+        )}
+
+        <View
+          style={[
+            styles.premiumCard,
+            {
+              backgroundColor: colorScheme === "dark" ? colors.paperRaised : "#F7F7F5",
+              borderColor: colors.borderStrong,
+              shadowColor: colors.shadowStrong,
+            },
+          ]}
+        >
+          <View style={[styles.cardRule, { backgroundColor: colorScheme === "dark" ? colors.accent : "#AE8F72" }]} />
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionLabel, { color: colors.accent, fontFamily: typography.meta }]}>
+              {t("membership.planPremium")}
+            </Text>
+            {isPremium ? <PlanBadge label={currentLabel()} /> : null}
+          </View>
+
+          <Text style={[styles.cardTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
+            {t("membership.premiumCardLine")}
+          </Text>
+          <Text style={[styles.cardBody, { color: colors.secondaryText, fontFamily: typography.body }]}>
+            {t("membership.premiumCardBody")}
+          </Text>
+
+          <View style={styles.benefitsList}>
+            {premiumBenefits.map((benefit) => (
+              <View key={benefit} style={styles.benefitRow}>
+                <Text style={[styles.bullet, { color: colors.accent }]}>•</Text>
+                <Text style={[styles.benefitText, { color: colors.primaryText, fontFamily: typography.body }]}>
+                  {benefit}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={[styles.anchorText, { color: colors.primaryText, fontFamily: typography.body }]}>
+            {t("membership.anchorStay")}
+          </Text>
+
+          {premiumPrice ? (
+            <View style={styles.priceWrap}>
+              {subscription.yearlyPackage ? <PlanBadge label={t("membership.bestValue")} subtle /> : null}
+              <Text style={[styles.priceText, { color: colors.primaryText, fontFamily: typography.action }]}>
+                {premiumPrice}
               </Text>
-              <PremiumFeatureList category={category} features={features} />
             </View>
-          ))}
-        </View>
-      </View>
+          ) : null}
 
-      {subscription.error && !membership.isUsingDevOverride ? (
-        <View style={[styles.errorCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.errorTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
-            {t("membership.errorTitle")}
+          <View style={styles.microcopyWrap}>
+            <Text style={[styles.microcopyPrimary, { color: colors.primaryText, fontFamily: typography.body }]}>
+              {t("membership.trialLineOne")}
+            </Text>
+            <Text style={[styles.microcopySecondary, { color: colors.secondaryText, fontFamily: typography.body }]}>
+              {t("membership.trialLineTwo")}
+            </Text>
+          </View>
+
+          <PrimaryButton
+            label={premiumButtonLabel}
+            onPress={() => {
+              void handlePlanSelection("premium");
+            }}
+            disabled={premiumDisabled}
+            style={styles.primaryButton}
+          />
+        </View>
+
+        <View style={[styles.lifelongCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.lifelongLabelWrap}>
+              <Text style={[styles.lifelongTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
+                {t("membership.planLifelong")}
+              </Text>
+              <PlanBadge label={t("membership.lifelongBadge")} subtle />
+            </View>
+            {isLifelong ? <PlanBadge label={currentLabel()} /> : null}
+          </View>
+
+          <Text style={[styles.lifelongSubtitle, { color: colors.primaryText, fontFamily: typography.display }]}>
+            {t("membership.lifelongCardLine")}
           </Text>
-          <Text style={[styles.errorBody, { color: colors.secondaryText }]}>{t("membership.errorBody")}</Text>
+          <Text style={[styles.lifelongBody, { color: colors.secondaryText, fontFamily: typography.body }]}>
+            {t("membership.lifelongCardBody")}
+          </Text>
+
+          {lifelongPrice ? (
+            <Text style={[styles.lifelongPrice, { color: colors.primaryText, fontFamily: typography.action }]}>
+              {lifelongPrice}
+            </Text>
+          ) : null}
+
+          <PrimaryButton
+            label={lifelongButtonLabel}
+            onPress={() => {
+              void handlePlanSelection("lifelong");
+            }}
+            disabled={lifelongDisabled}
+            variant="secondary"
+            style={styles.secondaryButton}
+          />
         </View>
-      ) : null}
 
-      <View style={styles.footerActions}>
-        <Pressable
-          onPress={() => {
-            membership.restoreMembership()
-              .then(() => {
-                Alert.alert(t("membership.restoreSuccessTitle"), t("membership.restoreSuccessBody"));
-              })
-              .catch(() => {
-                Alert.alert(t("membership.restoreErrorTitle"), t("membership.restoreErrorBody"));
-              });
-          }}
-          style={styles.footerLinkWrap}
-        >
-          <Text style={[styles.footerLink, { color: colors.secondaryText }]}>{t("paywall.restore")}</Text>
-        </Pressable>
+        <View style={[styles.freeCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+          <Text style={[styles.freeLabel, { color: colors.tertiaryText, fontFamily: typography.meta }]}>
+            {t("membership.freemiumMiniTitle")}
+          </Text>
+          <Text style={[styles.freeBody, { color: colors.secondaryText, fontFamily: typography.body }]}>
+            {t("membership.freemiumMiniBody")}
+          </Text>
+          <PrimaryButton
+            label={t("membership.freeAction")}
+            variant="ghost"
+            onPress={() => {
+              void handleContinueFree();
+            }}
+            style={styles.freeButton}
+          />
+          <Pressable onPress={() => void handleRestore()} hitSlop={8} style={styles.restoreWrap}>
+            <Text style={[styles.restoreText, { color: colors.secondaryText, fontFamily: typography.body }]}>
+              {t("settings.restorePurchases")}
+            </Text>
+          </Pressable>
+        </View>
 
-        <Pressable
-          onPress={() => {
-            Alert.alert(t("membership.manageTitle"), t("settings.manageSubscriptionBody"));
-          }}
-          style={styles.footerLinkWrap}
-        >
-          <Text style={[styles.footerLink, { color: colors.secondaryText }]}>{t("settings.manageSubscription")}</Text>
-        </Pressable>
-      </View>
-    </ScreenContainer>
+        {subscription.error ? (
+          <View style={[styles.errorCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.errorTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
+              {t("membership.errorTitle")}
+            </Text>
+            <Text style={[styles.errorBody, { color: colors.secondaryText, fontFamily: typography.body }]}>
+              {t("membership.errorBody")}
+            </Text>
+          </View>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 28,
+  },
   header: {
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   eyebrow: {
     fontSize: 12,
+    lineHeight: 16,
     fontWeight: "700",
+    letterSpacing: 1.8,
     textTransform: "uppercase",
-    letterSpacing: 2,
   },
   title: {
     fontSize: 34,
@@ -268,79 +351,182 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   subtitle: {
-    fontSize: 15,
-    lineHeight: 23,
-    maxWidth: 340,
-  },
-  cardStack: {
-    gap: 10,
-    marginBottom: 18,
+    fontSize: 16,
+    lineHeight: 24,
+    maxWidth: 332,
   },
   loadingCard: {
     borderWidth: 1,
-    borderRadius: 22,
+    borderRadius: 24,
     paddingVertical: 18,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 18,
   },
-  sectionCard: {
+  premiumCard: {
     borderWidth: 1,
-    borderRadius: 26,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    gap: 14,
-    marginBottom: 18,
+    borderRadius: 30,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 3,
   },
-  stateCard: {
-    borderWidth: 1,
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    gap: 8,
-    marginBottom: 18,
-  },
-  stateHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
-  stateTitle: {
-    flex: 1,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "600",
-  },
-  stateBody: {
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  stateNote: {
-    fontSize: 12,
-    lineHeight: 18,
+  cardRule: {
+    width: 52,
+    height: 2,
+    borderRadius: 999,
+    marginBottom: 14,
+    opacity: 0.78,
   },
   sectionHeader: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    alignItems: "center",
+    marginBottom: 10,
   },
-  sectionTitle: {
+  sectionLabel: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "700",
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+  },
+  cardTitle: {
+    fontSize: 28,
+    lineHeight: 35,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  cardBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 14,
+  },
+  benefitsList: {
+    gap: 8,
+    marginBottom: 14,
+  },
+  benefitRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  bullet: {
+    fontSize: 19,
+    lineHeight: 22,
+    marginTop: -1,
+  },
+  benefitText: {
     flex: 1,
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  anchorText: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  priceWrap: {
+    gap: 8,
+    marginBottom: 6,
+    alignItems: "flex-start",
+  },
+  priceText: {
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "600",
   },
-  featureGroups: {
-    gap: 16,
+  microcopyWrap: {
+    gap: 2,
+    marginBottom: 12,
   },
-  groupWrap: {
+  microcopyPrimary: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  microcopySecondary: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  primaryButton: {
+    alignSelf: "stretch",
+  },
+  lifelongCard: {
+    borderWidth: 1,
+    borderRadius: 26,
+    paddingHorizontal: 20,
+    paddingVertical: 17,
+    marginBottom: 12,
+  },
+  lifelongLabelWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
   },
-  groupDescription: {
-    fontSize: 13,
-    lineHeight: 19,
+  lifelongTitle: {
+    fontSize: 26,
+    lineHeight: 31,
+    fontWeight: "600",
+  },
+  lifelongSubtitle: {
+    fontSize: 20,
+    lineHeight: 27,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  lifelongBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+  lifelongPrice: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  secondaryButton: {
+    alignSelf: "flex-start",
+  },
+  freeCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    marginBottom: 14,
+  },
+  freeLabel: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  freeBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  freeButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 0,
+    minHeight: 44,
+  },
+  restoreWrap: {
+    alignSelf: "flex-start",
+    paddingTop: 4,
+    paddingBottom: 2,
+  },
+  restoreText: {
+    fontSize: 14,
+    lineHeight: 20,
+    textDecorationLine: "underline",
   },
   errorCard: {
     borderWidth: 1,
@@ -348,7 +534,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 15,
     gap: 8,
-    marginBottom: 18,
   },
   errorTitle: {
     fontSize: 18,
@@ -358,17 +543,5 @@ const styles = StyleSheet.create({
   errorBody: {
     fontSize: 14,
     lineHeight: 20,
-  },
-  footerActions: {
-    paddingBottom: 20,
-    gap: 2,
-  },
-  footerLinkWrap: {
-    paddingVertical: 8,
-  },
-  footerLink: {
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "600",
   },
 });

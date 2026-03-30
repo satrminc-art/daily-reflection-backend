@@ -19,9 +19,9 @@ export function PrimaryButton({ label, onPress, variant = "primary", disabled = 
 
   const variantStyle =
     variant === "primary"
-      ? { backgroundColor: colors.primaryText, borderColor: colors.primaryText, shadowColor: colors.shadow }
+      ? { backgroundColor: colors.accent, borderColor: colors.borderStrong, shadowColor: colors.shadowStrong }
       : variant === "secondary"
-        ? { backgroundColor: colors.card, borderColor: colors.border }
+        ? { backgroundColor: colors.elevatedSurface, borderColor: colors.borderStrong }
         : { backgroundColor: "transparent", borderColor: "transparent" };
 
   const textColor =
@@ -56,21 +56,21 @@ export function PrimaryButton({ label, onPress, variant = "primary", disabled = 
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
-    minHeight: 56,
+    minHeight: 54,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
     elevation: 2,
   },
   label: {
     fontSize: 14,
     fontWeight: "700",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   disabled: {
     opacity: 0.45,

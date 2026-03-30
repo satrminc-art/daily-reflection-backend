@@ -4,7 +4,7 @@ import { useNavigation } from "@react-navigation/native";
 import { CategoryChip } from "@/components/CategoryChip";
 import { EditorialHeader } from "@/components/EditorialHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { PremiumGateCard } from "@/components/premium/PremiumGateCard";
+import { UpgradeCard } from "@/components/premium/UpgradeCard";
 import { ReflectionListItem } from "@/components/ReflectionListItem";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -13,6 +13,7 @@ import { REFLECTION_CATEGORIES } from "@/data/categories";
 import { useAppStrings } from "@/hooks/useAppStrings";
 import { useMembership } from "@/hooks/useMembership";
 import { useTypography } from "@/hooks/useTypography";
+import { getPremiumPromptCopy } from "@/services/premiumPromptService";
 import { FREE_ARCHIVE_LIMIT } from "@/utils/membershipHelpers";
 import { ReflectionCategory } from "@/types/reflection";
 import { palette } from "@/utils/theme";
@@ -20,7 +21,7 @@ import { palette } from "@/utils/theme";
 type ArchiveFilter = "all" | "saved";
 
 export function ArchiveScreen() {
-  const { colorScheme, archive } = useAppContext();
+  const { colorScheme, archive, appState, markPremiumPromptOpened } = useAppContext();
   const membership = useMembership();
   const { t } = useAppStrings();
   const colors = palette[colorScheme];
@@ -29,6 +30,10 @@ export function ArchiveScreen() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ReflectionCategory | null>(null);
   const [filter, setFilter] = useState<ArchiveFilter>("all");
+  const collectionsPrompt = useMemo(
+    () => getPremiumPromptCopy("collections", appState.preferredLanguage),
+    [appState.preferredLanguage],
+  );
 
   const filteredArchive = useMemo(() => {
     return archive.filter((item) => {
@@ -75,9 +80,9 @@ export function ArchiveScreen() {
             style={[
               styles.search,
               {
-                backgroundColor: colors.surface,
+                backgroundColor: colors.inputSurface,
                 color: colors.primaryText,
-                borderColor: colors.border,
+                borderColor: colors.borderStrong,
                 fontFamily: typography.body,
               },
             ]}
@@ -95,11 +100,14 @@ export function ArchiveScreen() {
           </View>
         </>
       ) : (
-        <PremiumGateCard
-          title={t("membership.lockedArchiveTitle")}
-          message={t("membership.lockedArchiveBody")}
-          actionLabel={t("settings.upgradeAction")}
-          onPress={() => navigation.navigate("Membership")}
+        <UpgradeCard
+          title={collectionsPrompt.title}
+          body={collectionsPrompt.body}
+          actionLabel={collectionsPrompt.cta}
+          onPress={() => {
+            void markPremiumPromptOpened("collections");
+            navigation.navigate("Membership");
+          }}
         />
       )}
 
@@ -124,11 +132,14 @@ export function ArchiveScreen() {
       )}
 
       {isArchiveTrimmed ? (
-        <PremiumGateCard
-          title={t("archive.premiumTitle")}
-          message={t("archive.premiumMessage")}
-          actionLabel={t("settings.upgradeAction")}
-          onPress={() => navigation.navigate("Membership")}
+        <UpgradeCard
+          title={collectionsPrompt.title}
+          body={collectionsPrompt.body}
+          actionLabel={collectionsPrompt.cta}
+          onPress={() => {
+            void markPremiumPromptOpened("collections");
+            navigation.navigate("Membership");
+          }}
         />
       ) : null}
     </ScreenContainer>

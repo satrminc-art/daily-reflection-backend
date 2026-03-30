@@ -1,23 +1,46 @@
 import React, { forwardRef } from "react";
-import { Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useAppContext } from "@/context/AppContext";
 import { useAppStrings } from "@/hooks/useAppStrings";
 import { useTypography } from "@/hooks/useTypography";
 import { resolvePageStyleSystem } from "@/theme/pageStyle";
-import { ReflectionItem } from "@/types/reflection";
-import { formatCalendarDate } from "@/utils/date";
+import { ReflectionItem, SupportedLanguage } from "@/types/reflection";
+import { getDisplayDatePartsForAppLanguage } from "@/utils/date";
 import { palette } from "@/utils/theme";
+
+interface ReflectionLanguageTab {
+  code: SupportedLanguage;
+  label: string;
+}
 
 interface Props {
   reflection: ReflectionItem;
+  reflectionText?: string;
+  languageTabs?: ReflectionLanguageTab[];
+  activeLanguageCode?: SupportedLanguage | null;
+  onSelectLanguage?: (language: SupportedLanguage) => void;
+  showSourceType?: boolean;
+  metadataSeparator?: string;
 }
 
-export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
+export const CalendarCard = forwardRef<View, Props>(
+  (
+    {
+      reflection,
+      reflectionText,
+      languageTabs = [],
+      activeLanguageCode,
+      onSelectLanguage,
+      showSourceType = true,
+      metadataSeparator = "/",
+    },
+    ref,
+  ) => {
   const { colorScheme, personalization } = useAppContext();
   const { locale, categoryLabel, sourceTypeLabel, toneLabel } = useAppStrings();
   const colors = palette[colorScheme];
   const typography = useTypography();
-  const formatted = formatCalendarDate(reflection.date, locale);
+  const formatted = getDisplayDatePartsForAppLanguage(reflection.date, locale);
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
   const pageStyle = resolvePageStyleSystem(personalization.pageStyle.id);
@@ -35,6 +58,7 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
   const daySize = isCompact ? 98 : 114;
   const dayTextSize = isCompact ? 56 : 64;
   const dayLineHeight = isCompact ? 60 : 68;
+  const visibleReflectionText = reflectionText ?? reflection.text;
 
   const commonQuestionStyle = {
     color: colors.primaryText,
@@ -46,7 +70,6 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
 
   function renderClassicLayout() {
     const cardMinHeight = isCompact ? 500 : 570;
-    const questionMaxWidth = isCompact ? 250 : 286;
 
     return (
       <>
@@ -55,10 +78,10 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
         <View style={[styles.dateStrip, { borderBottomColor: colors.border }]}>
           <View style={styles.dateCopy}>
             <Text style={[styles.calendarLabel, { color: colors.accent, fontFamily: typography.meta }]}>
-              {formatted.monthLabel}
+              {formatted.monthDisplayLabel}
             </Text>
             <Text style={[styles.weekday, { color: colors.secondaryText, fontFamily: typography.meta }]}>
-              {formatted.weekdayLabel}
+              {formatted.weekdayDisplayLabel}
             </Text>
           </View>
           <View
@@ -83,36 +106,39 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
                 },
               ]}
             >
-              {formatted.dayNumber}
-            </Text>
-          </View>
+            {formatted.dayNumber}
+          </Text>
         </View>
-        <View style={[styles.questionWrap, { minHeight: cardMinHeight }]}>
+      </View>
+      <View style={[styles.questionWrap, { minHeight: cardMinHeight }]}>
           <Text
             style={[
               styles.question,
               commonQuestionStyle,
               {
                 textAlign: "center",
-                maxWidth: questionMaxWidth,
                 fontWeight: "500",
               },
             ]}
           >
-            {reflection.text}
+            {visibleReflectionText}
           </Text>
           <View style={styles.footer}>
             <Text style={[styles.meta, { color: colors.secondaryText, fontFamily: typography.meta }]}>
               {categoryLabel(reflection.category)}
             </Text>
-            <Text style={[styles.metaDivider, { color: colors.border, fontFamily: typography.meta }]}>/</Text>
+            <Text style={[styles.metaDivider, { color: colors.border, fontFamily: typography.meta }]}>{metadataSeparator}</Text>
             <Text style={[styles.meta, { color: colors.secondaryText, fontFamily: typography.meta }]}>
               {toneLabel(reflection.tone)}
             </Text>
-            <Text style={[styles.metaDivider, { color: colors.border, fontFamily: typography.meta }]}>/</Text>
-            <Text style={[styles.meta, { color: colors.secondaryText, fontFamily: typography.meta }]}>
-              {sourceTypeLabel(reflection.sourceType)}
-            </Text>
+            {showSourceType ? (
+              <>
+                <Text style={[styles.metaDivider, { color: colors.border, fontFamily: typography.meta }]}>{metadataSeparator}</Text>
+                <Text style={[styles.meta, { color: colors.secondaryText, fontFamily: typography.meta }]}>
+                  {sourceTypeLabel(reflection.sourceType)}
+                </Text>
+              </>
+            ) : null}
           </View>
         </View>
       </>
@@ -131,11 +157,12 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
               {
                 backgroundColor: colors.paperRaised,
                 borderColor: colors.border,
+                width: isCompact ? 82 : 92,
               },
             ]}
           >
             <Text style={[styles.calendarLabel, { color: colors.accent, fontFamily: typography.meta }]}>
-              {formatted.monthLabel}
+              {formatted.monthDisplayLabel}
             </Text>
             <Text
               style={[
@@ -149,7 +176,7 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
               {formatted.dayNumber}
             </Text>
             <Text style={[styles.weekday, { color: colors.secondaryText, fontFamily: typography.meta }]}>
-              {formatted.weekdayLabel}
+              {formatted.weekdayDisplayLabel}
             </Text>
           </View>
           <View style={styles.editorialHeaderCopy}>
@@ -157,7 +184,7 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
               {categoryLabel(reflection.category)}
             </Text>
             <Text style={[styles.editorialMetaSubline, { color: colors.secondaryText, fontFamily: typography.meta }]}>
-              {toneLabel(reflection.tone)} · {sourceTypeLabel(reflection.sourceType)}
+              {showSourceType ? `${toneLabel(reflection.tone)} · ${sourceTypeLabel(reflection.sourceType)}` : toneLabel(reflection.tone)}
             </Text>
           </View>
         </View>
@@ -172,15 +199,15 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
               },
             ]}
           >
-            {reflection.text}
+            {visibleReflectionText}
           </Text>
         </View>
         <View style={[styles.editorialFooter, { borderTopColor: colors.border }]}>
           <Text style={[styles.editorialFooterLine, { color: colors.secondaryText, fontFamily: typography.meta }]}>
-            {formatted.weekdayLabel}
+            {formatted.weekdayDisplayLabel}
           </Text>
           <Text style={[styles.editorialFooterLine, { color: colors.secondaryText, fontFamily: typography.meta }]}>
-            {formatted.monthLabel} {formatted.dayNumber}
+            {formatted.monthDisplayLabel} {formatted.dayNumber}
           </Text>
         </View>
       </>
@@ -198,11 +225,12 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
               {
                 backgroundColor: colors.paperRaised,
                 borderColor: colors.border,
+                width: isCompact ? 92 : 104,
               },
             ]}
           >
             <Text style={[styles.ledgerCellLabel, { color: colors.accent, fontFamily: typography.meta }]}>
-              {formatted.monthLabel}
+              {formatted.monthDisplayLabel}
             </Text>
             <Text style={[styles.ledgerDayNumber, { color: colors.primaryText, fontFamily: typography.display }]}>
               {formatted.dayNumber}
@@ -218,7 +246,7 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
             ]}
           >
             <Text style={[styles.ledgerCellLabel, { color: colors.secondaryText, fontFamily: typography.meta }]}>
-              {formatted.weekdayLabel}
+              {formatted.weekdayDisplayLabel}
             </Text>
             <Text style={[styles.ledgerCellValue, { color: colors.primaryText, fontFamily: typography.body }]}>
               {categoryLabel(reflection.category)}
@@ -240,13 +268,13 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
               style={[
                 styles.ledgerQuestion,
                 commonQuestionStyle,
-                {
-                  textAlign: "left",
-                  fontWeight: "500",
-                },
-              ]}
-            >
-              {reflection.text}
+              {
+                textAlign: "left",
+                fontWeight: "500",
+              },
+            ]}
+          >
+              {visibleReflectionText}
             </Text>
           </View>
         </View>
@@ -256,14 +284,16 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
               {toneLabel(reflection.tone)}
             </Text>
           </View>
+          {showSourceType ? (
+            <View style={styles.ledgerGridCell}>
+              <Text style={[styles.ledgerGridText, { color: colors.secondaryText, fontFamily: typography.meta }]}>
+                {sourceTypeLabel(reflection.sourceType)}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.ledgerGridCell}>
             <Text style={[styles.ledgerGridText, { color: colors.secondaryText, fontFamily: typography.meta }]}>
-              {sourceTypeLabel(reflection.sourceType)}
-            </Text>
-          </View>
-          <View style={styles.ledgerGridCell}>
-            <Text style={[styles.ledgerGridText, { color: colors.secondaryText, fontFamily: typography.meta }]}>
-              {formatted.weekdayLabel}
+              {formatted.weekdayDisplayLabel}
             </Text>
           </View>
         </View>
@@ -293,6 +323,38 @@ export const CalendarCard = forwardRef<View, Props>(({ reflection }, ref) => {
       >
         <View style={[styles.binding, { backgroundColor: colors.binding }]} />
         <View style={[styles.paperGlow, { backgroundColor: colors.paperGlow }]} />
+        {languageTabs.length > 1 ? (
+          <View style={styles.languageTabs}>
+            {languageTabs.map((languageTab) => {
+              const selected = languageTab.code === activeLanguageCode;
+              return (
+                <Pressable
+                  key={languageTab.code}
+                  onPress={() => onSelectLanguage?.(languageTab.code)}
+                  style={[
+                    styles.languageTab,
+                    {
+                      backgroundColor: selected ? colors.paperRaised : "transparent",
+                      borderColor: selected ? colors.borderStrong : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.languageTabLabel,
+                      {
+                        color: selected ? colors.primaryText : colors.secondaryText,
+                        fontFamily: typography.meta,
+                      },
+                    ]}
+                  >
+                    {languageTab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
         {pageStyle.fullVariant === "classic" ? renderClassicLayout() : null}
         {pageStyle.fullVariant === "editorial" ? renderEditorialLayout() : null}
         {pageStyle.fullVariant === "ledger" ? renderLedgerLayout() : null}
@@ -315,6 +377,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: "hidden",
     minHeight: 560,
+  },
+  languageTabs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 22,
+    paddingTop: 20,
+    paddingBottom: 4,
+  },
+  languageTab: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  languageTabLabel: {
+    fontSize: 11,
+    lineHeight: 15,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   binding: {
     height: 18,
@@ -354,13 +436,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     letterSpacing: 2.5,
-    textTransform: "uppercase",
   },
   weekday: {
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 2.4,
-    textTransform: "uppercase",
   },
   dayBadge: {
     borderRadius: 32,
@@ -372,6 +452,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   questionWrap: {
+    width: "100%",
     paddingHorizontal: 34,
     paddingTop: 42,
     paddingBottom: 56,
@@ -420,7 +501,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   editorialDatePanel: {
-    width: 92,
     borderWidth: 1,
     borderRadius: 16,
     paddingVertical: 16,
@@ -430,6 +510,7 @@ const styles = StyleSheet.create({
   },
   editorialHeaderCopy: {
     flex: 1,
+    minWidth: 0,
     gap: 10,
     paddingTop: 8,
     alignItems: "flex-start",
@@ -443,21 +524,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 2.2,
-    textTransform: "uppercase",
   },
   editorialMetaSubline: {
     fontSize: 12,
     letterSpacing: 1.1,
-    textTransform: "uppercase",
   },
   editorialQuestionWrap: {
+    width: "100%",
     paddingHorizontal: 30,
     paddingTop: 34,
     paddingBottom: 40,
     minHeight: 420,
   },
   editorialQuestion: {
-    maxWidth: 320,
+    width: "100%",
   },
   editorialFooter: {
     marginHorizontal: 28,
@@ -473,7 +553,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1.6,
-    textTransform: "uppercase",
   },
   ledgerInset: {
     position: "absolute",
@@ -492,7 +571,6 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   ledgerDateCell: {
-    width: 104,
     borderWidth: 1,
     borderRadius: 18,
     paddingHorizontal: 14,
@@ -513,7 +591,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1.6,
-    textTransform: "uppercase",
   },
   ledgerDayNumber: {
     fontSize: 42,
@@ -539,12 +616,13 @@ const styles = StyleSheet.create({
   },
   ledgerQuestionCopy: {
     flex: 1,
+    minWidth: 0,
     paddingHorizontal: 20,
     paddingVertical: 24,
     justifyContent: "center",
   },
   ledgerQuestion: {
-    maxWidth: 320,
+    width: "100%",
   },
   ledgerMetaGrid: {
     flexDirection: "row",
@@ -564,6 +642,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     letterSpacing: 1.1,
-    textTransform: "uppercase",
   },
 });

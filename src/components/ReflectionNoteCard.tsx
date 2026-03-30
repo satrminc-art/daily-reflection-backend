@@ -8,15 +8,18 @@ import { fetchReflectionFollowUp, ReflectionFollowUpError } from "@/services/fol
 import { getQuietNoteColor } from "@/theme/paperColor";
 import { resolvePageStyleSystem } from "@/theme/pageStyle";
 import { getNoteMaxLengthForEntitlement } from "@/utils/membershipHelpers";
+import { SupportedLanguage } from "@/types/reflection";
 import { palette } from "@/utils/theme";
 
 interface Props {
   date: string;
   reflectionId: string;
   isSaved: boolean;
+  reflectionText: string;
+  reflectionLanguage: SupportedLanguage;
 }
 
-export function ReflectionNoteCard({ date, reflectionId, isSaved }: Props) {
+export function ReflectionNoteCard({ date, reflectionId, isSaved, reflectionText, reflectionLanguage }: Props) {
   const {
     colorScheme,
     appState,
@@ -32,6 +35,7 @@ export function ReflectionNoteCard({ date, reflectionId, isSaved }: Props) {
   const colors = palette[colorScheme];
   const typography = useTypography();
   const pageStyle = resolvePageStyleSystem(personalization.pageStyle.id);
+  const isDarkMode = colorScheme === "dark";
   const reflection = getReflectionForDate(date);
   const noteBackgroundColor = membership.hasFeature("premium-paper-colors")
     ? getQuietNoteColor(appState.preferences.noteBackgroundColor, "#FFFFFF")
@@ -47,6 +51,23 @@ export function ReflectionNoteCard({ date, reflectionId, isSaved }: Props) {
   const canEditNote = membership.hasFeature("extended-notes") || isSaved;
   const noteMaxLength = getNoteMaxLengthForEntitlement(membership.effectiveEntitlement);
   const helperText = !canEditNote ? t("today.noteLockedBody") : !membership.hasFeature("extended-notes") ? t("today.noteLimitHint") : null;
+  const resolvedNoteInputBackground = isDarkMode
+    ? "#2a2a2a"
+    : canEditNote
+      ? noteBackgroundColor
+      : colors.paperMuted;
+  const resolvedNoteInputTextColor = isDarkMode ? "#EAE3DA" : colors.primaryText;
+  const resolvedNotePlaceholderColor = isDarkMode ? "#8a8a8a" : colors.tertiaryText;
+  const resolvedNoteInputBorder = isDarkMode ? "rgba(255,255,255,0.08)" : colors.border;
+  const darkNoteInputDepthStyle = isDarkMode
+    ? {
+        shadowColor: "#000000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.16,
+        shadowRadius: 2,
+        elevation: 1,
+      }
+    : null;
 
   useEffect(() => {
     setDraft(persistedNote);
@@ -113,12 +134,13 @@ export function ReflectionNoteCard({ date, reflectionId, isSaved }: Props) {
     try {
       const result = await fetchReflectionFollowUp({
         reflectionId,
-        reflectionText: reflection.text,
+        reflectionText,
         userNote: trimmedNote,
         category: reflection.category,
         appLanguage: appState.preferredLanguage ?? "en",
-        reflectionLanguage: appState.quoteLanguageSelections[date] ?? appState.preferredLanguage ?? "en",
+        reflectionLanguage,
         entitlement: membership.effectiveEntitlement,
+        userId: appState.localUserId,
       });
 
       const nextFollowUp = {
@@ -179,7 +201,7 @@ export function ReflectionNoteCard({ date, reflectionId, isSaved }: Props) {
           });
         }}
         placeholder={t("today.notePlaceholder")}
-        placeholderTextColor={colors.tertiaryText}
+        placeholderTextColor={resolvedNotePlaceholderColor}
         multiline
         editable={canEditNote}
         maxLength={noteMaxLength}
@@ -190,11 +212,12 @@ export function ReflectionNoteCard({ date, reflectionId, isSaved }: Props) {
           pageStyle.noteVariant === "editorial" ? styles.noteInputEditorial : null,
           pageStyle.noteVariant === "ledger" ? styles.noteInputLedger : null,
           {
-            color: colors.primaryText,
-            borderColor: colors.border,
-            backgroundColor: canEditNote ? noteBackgroundColor : colors.paperMuted,
+            color: resolvedNoteInputTextColor,
+            borderColor: resolvedNoteInputBorder,
+            backgroundColor: resolvedNoteInputBackground,
             fontFamily: typography.body,
           },
+          darkNoteInputDepthStyle,
         ]}
       />
       {helperText ? (
@@ -287,18 +310,18 @@ const styles = StyleSheet.create({
   noteInput: {
     minHeight: 132,
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 13,
     lineHeight: 22,
   },
   noteInputEditorial: {
-    borderRadius: 14,
+    borderRadius: 18,
     minHeight: 144,
   },
   noteInputLedger: {
-    borderRadius: 14,
+    borderRadius: 18,
     minHeight: 128,
   },
   noteHint: {

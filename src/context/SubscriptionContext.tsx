@@ -14,6 +14,8 @@ import { MembershipTier } from "@/types/membership";
 import {
   scheduleYearEndPremiumReminder,
   clearYearEndPremiumReminder,
+  clearFreemiumUpgradeReminder,
+  scheduleFreemiumUpgradeReminder,
 } from "@/services/notificationService";
 import {
   clearDevSubscriptionOverride,
@@ -35,6 +37,7 @@ interface SubscriptionContextValue {
   loading: boolean;
   error: string | null;
   configured: boolean;
+  subscriptionReady: boolean;
   currentPlanLabel: "Freemium" | "Premium" | "Lifelong";
   isUsingDevOverride: boolean;
   devOverridePlan: SubscriptionModel | null;
@@ -51,16 +54,30 @@ interface SubscriptionContextValue {
 const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
 
 function getErrorMessage(error: unknown, language?: string | null) {
-  return error instanceof Error ? error.message : getAppStrings(language).t("paywall.error");
+  return getAppStrings(language).t("membership.errorBody");
+}
+
+function hasDaysSince(timestamp: string | null, days: number) {
+  if (!timestamp) {
+    return true;
+  }
+
+  const previous = new Date(timestamp).getTime();
+  if (Number.isNaN(previous)) {
+    return true;
+  }
+
+  return Date.now() - previous >= days * 24 * 60 * 60 * 1000;
 }
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { appState } = useAppContext();
+  const { appState, updateSubscriptionModel, markFreemiumUpgradeNotificationScheduled } = useAppContext();
   const [configured, setConfigured] = useState(false);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [subscriptionReady, setSubscriptionReady] = useState(false);
   const [realTier, setRealTier] = useState<MembershipTier | null>(null);
   const [devOverridePlan, setDevOverridePlanState] = useState<SubscriptionModel | null>(null);
 
@@ -85,6 +102,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       if (!didConfigure && !isPurchasesConfigured()) {
         setOffering(null);
         setCustomerInfo(null);
+        setRealTier(null);
+        console.info("[SUBSCRIPTION] fallback to freemium");
         return;
       }
 
@@ -96,16 +115,21 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setOffering(nextOffering);
       setCustomerInfo(nextCustomerInfo);
       setRealTier(nextCustomerInfo ? deriveMembershipTier(nextCustomerInfo) : null);
+      console.info("[SUBSCRIPTION] subscription state ready");
     } catch (nextError) {
       setError(getErrorMessage(nextError, appState.preferredLanguage));
+      console.warn("[SUBSCRIPTION] initialization failed, continuing as freemium", nextError);
     } finally {
+      setSubscriptionReady(true);
       setLoading(false);
     }
   }
 
   useEffect(() => {
+    console.info("[SUBSCRIPTION] starting deferred initialization");
     refreshSubscriptionStatus().catch((nextError) => {
       setError(getErrorMessage(nextError, appState.preferredLanguage));
+      setSubscriptionReady(true);
       setLoading(false);
     });
   }, [appState.preferredLanguage]);
@@ -187,6 +211,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       }).catch((error) => {
         console.warn("Failed to schedule premium reminder", error);
       });
+
+      clearFreemiumUpgradeReminder().catch((error) => {
+        console.warn("Failed to clear freemium upgrade reminder", error);
+      });
       return;
     }
 
@@ -194,6 +222,57 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       console.warn("Failed to clear premium reminder", error);
     });
   }, [appState.preferredLanguage, appState.userName, isPremium]);
+
+  useEffect(() => {
+    if (
+      isPremium ||
+      !appState.hasCompletedOnboarding ||
+      !appState.preferences.notificationsEnabled ||
+      appState.viewedDates.length < 7 ||
+      !hasDaysSince(appState.lastFreemiumUpgradeNotificationAt, 10)
+    ) {
+      return;
+    }
+
+    const strings = getAppStrings(appState.preferredLanguage);
+
+    scheduleFreemiumUpgradeReminder(appState.preferences.notificationTime, {
+      title: strings.t("membership.upgradeNotificationTitle"),
+      body: strings.t("membership.upgradeNotificationBody"),
+      language: appState.preferredLanguage,
+      userName: appState.userName,
+      notificationsEnabled: appState.preferences.notificationsEnabled,
+      soundEnabled: appState.preferences.soundEnabled,
+      silentMode: appState.preferences.silentMode,
+      daysFromNow: 7,
+    })
+      .then((scheduled) => {
+        if (scheduled) {
+          return markFreemiumUpgradeNotificationScheduled();
+        }
+      })
+      .catch((error) => {
+        console.warn("Failed to schedule freemium upgrade reminder", error);
+      });
+  }, [
+    appState.hasCompletedOnboarding,
+    appState.lastFreemiumUpgradeNotificationAt,
+    appState.preferences.notificationTime,
+    appState.preferences.notificationsEnabled,
+    appState.preferences.silentMode,
+    appState.preferences.soundEnabled,
+    appState.preferredLanguage,
+    appState.userName,
+    appState.viewedDates.length,
+    isPremium,
+    markFreemiumUpgradeNotificationScheduled,
+  ]);
+
+  useEffect(() => {
+    updateSubscriptionModel(effectivePlanLabel).catch((error) => {
+      console.warn("[SUBSCRIPTION] failed to sync local subscription model", error);
+    });
+  }, [effectivePlanLabel]);
 
   return (
     <SubscriptionContext.Provider
@@ -203,6 +282,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         loading,
         error,
         configured,
+        subscriptionReady,
         currentPlanLabel: effectivePlanLabel,
         isUsingDevOverride: __DEV_OVERRIDE_ENABLED__ && Boolean(devOverridePlan),
         devOverridePlan,

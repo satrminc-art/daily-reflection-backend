@@ -9,9 +9,18 @@ interface Props {
   supportingText?: string;
   selected: boolean;
   onPress: () => void;
+  labelDirection?: "ltr" | "rtl";
+  compact?: boolean;
 }
 
-export function OnboardingOptionCard({ label, supportingText, selected, onPress }: Props) {
+export function OnboardingOptionCard({
+  label,
+  supportingText,
+  selected,
+  onPress,
+  labelDirection = "ltr",
+  compact = false,
+}: Props) {
   const { colorScheme } = useAppContext();
   const colors = palette[colorScheme];
   const typography = useTypography();
@@ -24,6 +33,7 @@ export function OnboardingOptionCard({ label, supportingText, selected, onPress 
       accessibilityState={{ selected }}
       style={({ pressed }) => [
         styles.card,
+        compact && styles.cardCompact,
         {
           backgroundColor: selected ? colors.paperTint : colors.surface,
           borderColor: selected ? colors.accent : colors.border,
@@ -33,11 +43,28 @@ export function OnboardingOptionCard({ label, supportingText, selected, onPress 
       ]}
     >
       <View style={styles.copy}>
-        <Text style={[styles.label, { color: selected ? selectedTextColor : colors.primaryText, fontFamily: typography.display }]}>
+        <Text
+          style={[
+            styles.label,
+            compact && styles.labelCompact,
+            {
+              color: selected ? selectedTextColor : colors.primaryText,
+              fontFamily: typography.display,
+              writingDirection: labelDirection,
+              textAlign: labelDirection === "rtl" ? "right" : "left",
+            },
+          ]}
+        >
           {label}
         </Text>
         {supportingText ? (
-          <Text style={[styles.supportingText, { color: selected ? colors.primaryText : colors.secondaryText }]}>
+          <Text
+            style={[
+              styles.supportingText,
+              compact && styles.supportingTextCompact,
+              { color: selected ? colors.primaryText : colors.secondaryText },
+            ]}
+          >
             {supportingText}
           </Text>
         ) : null}
@@ -62,39 +89,55 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     paddingHorizontal: 18,
-    paddingVertical: 18,
-    minHeight: 72,
+    paddingVertical: 16,
+    minHeight: 70,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 16,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 1,
+  },
+  cardCompact: {
+    minHeight: 60,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
   pressed: {
     transform: [{ scale: 0.99 }],
   },
   copy: {
     flex: 1,
+    minWidth: 0,
     gap: 4,
   },
   label: {
-    fontSize: 21,
-    lineHeight: 28,
+    fontSize: 20,
+    lineHeight: 27,
+  },
+  labelCompact: {
+    fontSize: 17,
+    lineHeight: 23,
   },
   supportingText: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 19,
+  },
+  supportingTextCompact: {
+    fontSize: 13,
+    lineHeight: 17,
   },
   indicator: {
-    width: 16,
-    height: 16,
+    width: 15,
+    height: 15,
     borderRadius: 999,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 5,
   },
   checkmark: {
     fontSize: 10,

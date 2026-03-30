@@ -7,8 +7,11 @@ export interface WidgetReflectionSnapshot {
   question: string;
 }
 
-export function buildWidgetReflectionSnapshot(reflection: ReflectionItem): WidgetReflectionSnapshot {
-  const { monthLabel, dayNumber } = formatCalendarDate(reflection.date);
+export function buildWidgetReflectionSnapshot(
+  reflection: ReflectionItem,
+  locale = "en-US",
+): WidgetReflectionSnapshot {
+  const { monthLabel, dayNumber } = formatCalendarDate(reflection.date, locale);
 
   return {
     monthLabel,

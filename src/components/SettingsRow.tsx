@@ -32,19 +32,26 @@ export function SettingsRow({ label, value, onPress, danger = false }: Props) {
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: 58,
+    minHeight: 66,
     borderBottomWidth: 1,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
+    paddingVertical: 18,
   },
   label: {
     fontSize: 16,
     fontWeight: "600",
     flex: 1,
+    lineHeight: 25,
+    minWidth: 0,
   },
   value: {
     fontSize: 14,
+    lineHeight: 22,
+    flexShrink: 1,
+    minWidth: 0,
+    textAlign: "right",
   },
 });

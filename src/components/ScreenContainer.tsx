@@ -1,5 +1,15 @@
 import React from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  View,
+  ViewStyle,
+} from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAppContext } from "@/context/AppContext";
@@ -9,9 +19,11 @@ interface Props {
   children: React.ReactNode;
   scroll?: boolean;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  overlay?: React.ReactNode;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 }
 
-export function ScreenContainer({ children, scroll = false, contentContainerStyle }: Props) {
+export function ScreenContainer({ children, scroll = false, contentContainerStyle, overlay, onScroll }: Props) {
   const { colorScheme } = useAppContext();
   const colors = palette[colorScheme];
   const insets = useSafeAreaInsets();
@@ -27,6 +39,8 @@ export function ScreenContainer({ children, scroll = false, contentContainerStyl
       keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       contentInsetAdjustmentBehavior="automatic"
       overScrollMode="never"
+      onScroll={onScroll}
+      scrollEventThrottle={16}
     >
       {children}
     </ScrollView>
@@ -35,13 +49,14 @@ export function ScreenContainer({ children, scroll = false, contentContainerStyl
   );
 
   return (
-    <LinearGradient colors={[colors.background, colors.surface, colors.overlay]} style={styles.fill}>
+    <LinearGradient colors={[colors.appBackground, colors.appBackground, colors.appBackground]} style={styles.fill}>
       <SafeAreaView style={styles.fill} edges={["top", "left", "right", "bottom"]}>
         <KeyboardAvoidingView
           style={styles.fill}
           behavior={Platform.select({ ios: "padding", android: undefined })}
         >
           {content}
+          {overlay ? <View pointerEvents="box-none" style={styles.overlay}>{overlay}</View> : null}
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
@@ -55,5 +70,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     flexGrow: 1,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
   },
 });

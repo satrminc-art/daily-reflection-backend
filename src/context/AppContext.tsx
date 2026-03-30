@@ -1,21 +1,31 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { AppState, useColorScheme } from "react-native";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { AppState, I18nManager, useColorScheme } from "react-native";
 import { REFLECTION_CATEGORIES } from "@/data/categories";
 import {
+  cancelNotificationIds,
   NotificationContentOptions,
+  clearFreemiumUpgradeReminder,
   clearScheduledNotification,
+  clearYearEndPremiumReminder,
   rescheduleDailyNotification,
+  scheduleFollowUpRemindersForDay,
 } from "@/services/notificationService";
 import {
   getFavoriteEntryKey,
   getReflectionForDate,
-  getReflectionIdForDate,
   hydrateReflectionById,
+  resolveDailyReflectionSelection,
 } from "@/services/reflectionService";
-import { clearAppState, defaultAppState, loadAppState, saveAppState } from "@/storage/appStorage";
+import {
+  clearAppState,
+  defaultAppState,
+  loadAppStateSnapshot,
+  loadDeferredLocalUserId,
+  saveAppState,
+} from "@/storage/appStorage";
 import { getAppStrings } from "@/localization/strings";
 import { sanitizeCustomPaperColor } from "@/theme/paperColor";
-import { PageStylePresetId, PaperThemePresetId, TypographyPresetId } from "@/theme/presets";
+import { AppearancePresetId, PageStylePresetId, PaperThemePresetId, TypographyPresetId } from "@/theme/presets";
 import type { PersonalizationSelection } from "@/theme/system";
 import { resolvePersonalizationSelection } from "@/theme/system";
 import {
@@ -23,34 +33,66 @@ import {
   AppStorageState,
   NotificationPreference,
   OnboardingPreference,
+  PersonalCollection,
+  PersonalCollectionSummary,
+  PremiumPromptContext,
   ReflectionCategory,
+  ReflectionLanguageMode,
   ReflectionItem,
   SubscriptionModel,
   SupportedLanguage,
   ThemePreference,
+  TextColorMode,
+  AppearanceMode,
 } from "@/types/reflection";
 import { StoredReflectionFollowUp } from "@/types/ai";
-import { getDailyReflectionLanguage, todayISODate } from "@/utils/reflection";
+import {
+  getInitialLanguage,
+  isRTLLanguage,
+  persistLanguageSelection,
+  sanitizeAppLanguageForSubscription,
+  sanitizeReflectionLanguageForSubscription,
+  sanitizeReflectionLanguagesForSubscription,
+} from "@/localization/languages";
+import { getEffectiveReflectionLanguage, getEffectiveReflectionLanguages, todayISODate } from "@/utils/reflection";
 import { AppColorScheme, setGlobalPaperThemeId } from "@/utils/theme";
+import { getAdjacentISODate, getReflectionActivationTimestamp, getTodayKey } from "@/utils/date";
 
 interface AppContextValue {
   isReady: boolean;
+  appBootReady: boolean;
+  storageReady: boolean;
+  todayReady: boolean;
+  settingsReady: boolean;
   appState: AppStorageState;
   colorScheme: AppColorScheme;
   todaysReflection: ReflectionItem | null;
   archive: ReflectionItem[];
   favorites: ReflectionItem[];
+  collections: PersonalCollectionSummary[];
   availableDates: string[];
   personalization: PersonalizationSelection;
   getReflectionForDate: (date: string) => ReflectionItem;
   getReflectionNote: (date: string, reflectionId: string) => string;
   getReflectionFollowUp: (date: string, reflectionId: string) => StoredReflectionFollowUp | null;
+  getCollectionById: (collectionId: string) => PersonalCollection | null;
+  getCollectionReflections: (collectionId: string) => ReflectionItem[];
+  isReflectionInCollection: (collectionId: string, date: string, reflectionId: string) => boolean;
   completeOnboarding: (payload: {
     preferredLanguage: SupportedLanguage | null;
     userName: string | null;
     userPreferences: OnboardingPreference[];
+    reminderTime: NotificationPreference;
+    reminderPreset: AppPreferences["reminderPreset"];
   }) => Promise<void>;
   markTodayIntroOverlaySeen: () => Promise<void>;
+  markDailyReflectionPreviewSeen: () => Promise<void>;
+  markInitialPremiumOfferSeen: () => Promise<void>;
+  markFreemiumUpgradePromptSeen: (options?: { postReflection?: boolean }) => Promise<void>;
+  markFreemiumUpgradeNotificationScheduled: () => Promise<void>;
+  markPremiumPromptShown: (context: PremiumPromptContext) => Promise<void>;
+  markPremiumPromptDismissed: (context: PremiumPromptContext) => Promise<void>;
+  markPremiumPromptOpened: (context: PremiumPromptContext) => Promise<void>;
   toggleFavorite: (reflectionId: string, date?: string) => Promise<void>;
   updateCategories: (categories: ReflectionCategory[]) => Promise<void>;
   updateNotificationTime: (
@@ -61,10 +103,22 @@ interface AppContextValue {
       notificationContent?: NotificationContentOptions;
     },
   ) => Promise<void>;
+  updateNotificationDeliveryPreferences: (
+    preferences: Partial<
+      Pick<AppPreferences, "notificationsEnabled" | "soundEnabled" | "hapticsEnabled" | "silentMode">
+    >,
+  ) => Promise<void>;
   updateLanguage: (language: SupportedLanguage) => Promise<void>;
-  updateQuoteLanguages: (languages: SupportedLanguage[]) => Promise<void>;
+  updateReflectionLanguageMode: (mode: ReflectionLanguageMode) => Promise<void>;
+  updateReflectionLanguages: (languages: SupportedLanguage[]) => Promise<void>;
+  setReflectionCardLanguageSelection: (date: string, language: SupportedLanguage) => Promise<void>;
   updateSubscriptionModel: (model: SubscriptionModel) => Promise<void>;
   updateTheme: (theme: ThemePreference) => Promise<void>;
+  updateAppearanceMode: (mode: AppearanceMode) => Promise<void>;
+  updateAppearancePreset: (appearancePresetId: AppearancePresetId) => Promise<void>;
+  updateAppBackgroundColor: (appBackgroundColor: string) => Promise<void>;
+  updateTextColorMode: (mode: TextColorMode) => Promise<void>;
+  updateCustomTextColor: (textColor: string) => Promise<void>;
   updatePaperTheme: (paperThemeId: PaperThemePresetId) => Promise<void>;
   updateCustomPaperColor: (paperColor: string) => Promise<void>;
   updateNoteBackgroundColor: (noteBackgroundColor: string) => Promise<void>;
@@ -77,6 +131,13 @@ interface AppContextValue {
     reflectionId: string,
     followUp: StoredReflectionFollowUp | null,
   ) => Promise<void>;
+  markActiveReflectionViewed: () => Promise<void>;
+  deferActiveReflectionForToday: () => Promise<void>;
+  createCollection: (input: { title: string; description?: string | null }) => Promise<string>;
+  renameCollection: (collectionId: string, input: { title: string; description?: string | null }) => Promise<void>;
+  deleteCollection: (collectionId: string) => Promise<void>;
+  addReflectionToCollection: (collectionId: string, date: string, reflectionId: string) => Promise<void>;
+  removeReflectionFromCollection: (collectionId: string, date: string, reflectionId: string) => Promise<void>;
   resetAllData: () => Promise<void>;
 }
 
@@ -87,6 +148,20 @@ function resolveColorScheme(theme: ThemePreference, systemScheme: string | null 
     return systemScheme === "dark" ? "dark" : "light";
   }
   return theme;
+}
+
+function buildNotificationScheduleSignature(
+  language: SupportedLanguage | null,
+  preferences: Pick<AppPreferences, "notificationTime" | "notificationsEnabled" | "soundEnabled" | "silentMode">,
+) {
+  return [
+    language ?? "en",
+    preferences.notificationTime.hour,
+    preferences.notificationTime.minute,
+    preferences.notificationsEnabled ? "enabled" : "disabled",
+    preferences.soundEnabled ? "sound" : "mute",
+    preferences.silentMode ? "silent" : "normal",
+  ].join(":");
 }
 
 function formatNotificationTime(preference: NotificationPreference): string {
@@ -101,41 +176,203 @@ function getReflectionFollowUpKey(date: string, reflectionId: string) {
   return `${date}:${reflectionId}`;
 }
 
-function resolveStoredQuoteLanguage(state: AppStorageState, date: string): SupportedLanguage {
-  const existing = state.quoteLanguageSelections[date];
-  if (existing) {
-    return existing;
+function createCollectionId() {
+  return `collection-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+}
+
+function removeReflectionKeyFromCollections(
+  collectionEntries: Record<string, string[]>,
+  reflectionKey: string,
+): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.entries(collectionEntries)
+      .map(([collectionId, keys]) => [collectionId, keys.filter((key) => key !== reflectionKey)] as const)
+      .filter(([, keys]) => keys.length > 0),
+  );
+}
+
+function resolveStoredQuoteLanguages(state: AppStorageState): SupportedLanguage[] {
+  return getEffectiveReflectionLanguages({
+    appLanguage: state.preferredLanguage,
+    reflectionLanguageMode: state.reflectionLanguageMode,
+    reflectionLanguage: state.reflectionLanguage,
+    reflectionLanguages: state.reflectionLanguages,
+    subscriptionModel: state.subscriptionModel,
+  });
+}
+
+function resolveStoredQuoteLanguage(state: AppStorageState): SupportedLanguage {
+  return resolveStoredQuoteLanguages(state)[0] ?? "en";
+}
+
+function markReflectionAsShown(
+  shownDatesByReflectionId: Record<string, string>,
+  reflectionId: string,
+  date: string,
+): Record<string, string> {
+  const previousDate = shownDatesByReflectionId[reflectionId];
+  if (previousDate === date) {
+    return shownDatesByReflectionId;
   }
 
-  return getDailyReflectionLanguage(
-    date,
-    state.quoteLanguages,
-    state.quoteLanguageSelections,
-    state.preferredLanguage,
+  if (previousDate && previousDate > date) {
+    return shownDatesByReflectionId;
+  }
+
+  return {
+    ...shownDatesByReflectionId,
+    [reflectionId]: date,
+  };
+}
+
+function sanitizeLanguageStateForSubscription(
+  preferredLanguage: SupportedLanguage | null | undefined,
+  reflectionLanguageMode: ReflectionLanguageMode,
+  reflectionLanguage: SupportedLanguage | null | undefined,
+  reflectionLanguages: readonly (SupportedLanguage | null | undefined)[] | null | undefined,
+  subscriptionModel: SubscriptionModel,
+): Pick<
+  AppStorageState,
+  "preferredLanguage" | "reflectionLanguageMode" | "reflectionLanguage" | "reflectionLanguages" | "quoteLanguages"
+> {
+  const nextPreferredLanguage = sanitizeAppLanguageForSubscription(preferredLanguage ?? "en", subscriptionModel);
+  const nextReflectionLanguageMode: ReflectionLanguageMode =
+    subscriptionModel === "Freemium" ? "same_as_app" : reflectionLanguageMode === "custom" ? "custom" : "same_as_app";
+  const nextReflectionLanguages =
+    nextReflectionLanguageMode === "custom"
+      ? sanitizeReflectionLanguagesForSubscription(reflectionLanguages, nextPreferredLanguage, subscriptionModel)
+      : [nextPreferredLanguage];
+  const nextReflectionLanguage = sanitizeReflectionLanguageForSubscription(
+    nextReflectionLanguages[0] ?? (nextReflectionLanguageMode === "custom" ? reflectionLanguage : nextPreferredLanguage),
+    nextPreferredLanguage,
+    subscriptionModel,
   );
+
+  return {
+    preferredLanguage: nextPreferredLanguage,
+    reflectionLanguageMode: nextReflectionLanguageMode,
+    reflectionLanguage: nextReflectionLanguage,
+    reflectionLanguages: nextReflectionLanguages,
+    quoteLanguages: nextReflectionLanguages,
+  };
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
   const [appState, setAppState] = useState<AppStorageState>(defaultAppState);
-  const [isReady, setIsReady] = useState(false);
-  const [currentDateKey, setCurrentDateKey] = useState(todayISODate());
+  const [appBootReady, setAppBootReady] = useState(false);
+  const [storageReady, setStorageReady] = useState(false);
+  const [todayReady, setTodayReady] = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [currentDateKey, setCurrentDateKey] = useState(getTodayKey());
+  const notificationScheduleSignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
-    async function bootstrap() {
-      const storedState = await loadAppState();
-      setAppState(storedState);
-      setCurrentDateKey(todayISODate());
-      setIsReady(true);
+    try {
+      I18nManager.allowRTL(true);
+      I18nManager.swapLeftAndRightInRTL(false);
+    } catch (error) {
+      console.warn("[BOOT] unable to prepare RTL support", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function bootstrapCritical() {
+      console.info("[BOOT] app shell start");
+      try {
+        const storedState = await loadAppStateSnapshot();
+        const initialLanguage = storedState.preferredLanguage ?? (await getInitialLanguage());
+        if (!isMounted) {
+          return;
+        }
+
+        const sanitizedLanguageState = sanitizeLanguageStateForSubscription(
+          storedState.preferredLanguage ?? initialLanguage,
+          storedState.reflectionLanguageMode,
+          storedState.reflectionLanguage ?? storedState.reflectionLanguages[0] ?? storedState.quoteLanguages[0] ?? initialLanguage,
+          storedState.reflectionLanguages ?? storedState.quoteLanguages,
+          storedState.subscriptionModel,
+        );
+
+        setAppState({
+          ...storedState,
+          ...sanitizedLanguageState,
+        });
+        console.info("[BOOT] local state loaded");
+      } catch (error) {
+        console.warn("[BOOT] failed to load critical local state, falling back to defaults", error);
+        if (isMounted) {
+          void getInitialLanguage()
+            .then((initialLanguage) => {
+              setAppState({
+                ...defaultAppState,
+                preferredLanguage: initialLanguage,
+                reflectionLanguage: initialLanguage,
+                reflectionLanguages: [initialLanguage],
+                quoteLanguages: [initialLanguage],
+              });
+            })
+            .catch(() => {
+              setAppState(defaultAppState);
+            });
+        }
+      } finally {
+        if (isMounted) {
+          setCurrentDateKey(getTodayKey());
+          setStorageReady(true);
+          setSettingsReady(true);
+          setAppBootReady(true);
+          console.info("[BOOT] shell ready");
+        }
+      }
     }
 
-    bootstrap();
+    async function bootstrapDeferred() {
+      try {
+        const nextLocalUserId = await loadDeferredLocalUserId(defaultAppState.localUserId);
+        if (!isMounted) {
+          return;
+        }
+
+        setAppState((previous) =>
+          previous.localUserId === nextLocalUserId
+            ? previous
+            : {
+                ...previous,
+                localUserId: nextLocalUserId,
+              },
+        );
+        console.info("[BOOT] deferred identifiers ready");
+      } catch (error) {
+        console.warn("[BOOT] deferred identifier setup failed, continuing with local fallback", error);
+      }
+    }
+
+    bootstrapCritical()
+      .catch((error) => {
+        console.warn("[BOOT] unexpected critical bootstrap failure", error);
+        if (isMounted) {
+          setCurrentDateKey(getTodayKey());
+          setStorageReady(true);
+          setSettingsReady(true);
+          setAppBootReady(true);
+        }
+      })
+      .finally(() => {
+        void bootstrapDeferred();
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        setCurrentDateKey(todayISODate());
+        setCurrentDateKey(getTodayKey());
       }
     });
 
@@ -143,21 +380,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isReady) {
+    setCurrentDateKey(getTodayKey());
+  }, [appState.hasCompletedOnboarding]);
+
+  useEffect(() => {
+    if (!storageReady) {
       return;
     }
 
     saveAppState(appState).catch((error) => {
       console.warn("Failed to persist app state", error);
     });
-  }, [appState, isReady]);
+  }, [appState, storageReady]);
 
   const todaysReflection = useMemo(() => {
     if (!appState.hasCompletedOnboarding) {
       return null;
     }
 
-    const quoteLanguage = resolveStoredQuoteLanguage(appState, currentDateKey);
+    const quoteLanguage = resolveStoredQuoteLanguage(appState);
 
     return getReflectionForDate(
       currentDateKey,
@@ -172,49 +413,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     appState.favorites,
     appState.hasCompletedOnboarding,
     appState.preferences.selectedCategories,
-    appState.quoteLanguageSelections,
-    appState.quoteLanguages,
+    appState.reflectionLanguage,
+    appState.reflectionLanguageMode,
+    appState.reflectionLanguages,
     appState.preferredLanguage,
-  ]);
-
-  useEffect(() => {
-    if (!isReady || !appState.hasCompletedOnboarding) {
-      return;
-    }
-
-    const dates = Object.keys(appState.dailySelections).sort();
-    const missingDates = dates.filter((date) => !appState.quoteLanguageSelections[date]);
-
-    if (!missingDates.length) {
-      return;
-    }
-
-    setAppState((previous) => {
-      const nextSelections = { ...previous.quoteLanguageSelections };
-
-      for (const date of dates) {
-        if (!nextSelections[date]) {
-          nextSelections[date] = getDailyReflectionLanguage(
-            date,
-            previous.quoteLanguages,
-            nextSelections,
-            previous.preferredLanguage,
-          );
-        }
-      }
-
-      return {
-        ...previous,
-        quoteLanguageSelections: nextSelections,
-      };
-    });
-  }, [
-    isReady,
-    appState.hasCompletedOnboarding,
-    appState.dailySelections,
-    appState.preferredLanguage,
-    appState.quoteLanguageSelections,
-    appState.quoteLanguages,
+    appState.subscriptionModel,
   ]);
 
   const archive = useMemo(() => {
@@ -224,7 +427,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           reflectionId,
           date,
           appState.favorites,
-          resolveStoredQuoteLanguage(appState, date),
+          resolveStoredQuoteLanguage(appState),
         );
 
         return date < currentDateKey || Boolean(hydrated?.isFavorite);
@@ -234,7 +437,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           reflectionId,
           date,
           appState.favorites,
-          resolveStoredQuoteLanguage(appState, date),
+          resolveStoredQuoteLanguage(appState),
         );
       })
       .filter((item): item is ReflectionItem => Boolean(item))
@@ -244,8 +447,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     appState.dailySelections,
     appState.favorites,
     appState.preferredLanguage,
-    appState.quoteLanguageSelections,
-    appState.quoteLanguages,
+    appState.reflectionLanguage,
+    appState.reflectionLanguageMode,
+    appState.reflectionLanguages,
+    appState.subscriptionModel,
   ]);
 
   const favorites = useMemo(() => {
@@ -255,13 +460,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           reflectionId,
           date,
           appState.favorites,
-          resolveStoredQuoteLanguage(appState, date),
+          resolveStoredQuoteLanguage(appState),
         ),
       )
       .filter((item): item is ReflectionItem => Boolean(item))
       .filter((item) => item.isFavorite)
       .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [appState.dailySelections, appState.favorites, appState.quoteLanguageSelections]);
+  }, [
+    appState.dailySelections,
+    appState.favorites,
+    appState.preferredLanguage,
+    appState.reflectionLanguage,
+    appState.reflectionLanguageMode,
+    appState.reflectionLanguages,
+    appState.subscriptionModel,
+  ]);
+
+  const collections = useMemo(() => {
+    return appState.personalCollections
+      .map((collection) => ({
+        ...collection,
+        reflectionCount: appState.collectionEntries[collection.id]?.length ?? 0,
+      }))
+      .sort((a, b) => ((a.updatedAt || a.createdAt) < (b.updatedAt || b.createdAt) ? 1 : -1));
+  }, [appState.collectionEntries, appState.personalCollections]);
 
   const availableDates = useMemo(() => {
     const priorDates = archive.map((item) => item.date);
@@ -270,11 +492,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const personalization = useMemo(() => {
     return resolvePersonalizationSelection({
+      selectedAppearancePresetId: appState.preferences.selectedAppearancePresetId,
       paperThemeId: appState.preferences.paperThemeId,
       typographyPresetId: appState.preferences.typographyPresetId,
       pageStyleId: appState.preferences.pageStyleId,
     });
   }, [
+    appState.preferences.selectedAppearancePresetId,
     appState.preferences.pageStyleId,
     appState.preferences.paperThemeId,
     appState.preferences.typographyPresetId,
@@ -286,7 +510,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       appState.preferences.selectedCategories,
       appState.favorites,
       appState.dailySelections,
-      resolveStoredQuoteLanguage(appState, date),
+      resolveStoredQuoteLanguage(appState),
     );
   }
 
@@ -298,43 +522,235 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return appState.reflectionFollowUps[getReflectionFollowUpKey(date, reflectionId)] ?? null;
   }
 
+  function getCollectionById(collectionId: string) {
+    return appState.personalCollections.find((collection) => collection.id === collectionId) ?? null;
+  }
+
+  function isReflectionInCollection(collectionId: string, date: string, reflectionId: string) {
+    return (appState.collectionEntries[collectionId] ?? []).includes(getFavoriteEntryKey(date, reflectionId));
+  }
+
+  function getCollectionReflections(collectionId: string) {
+    const keys = appState.collectionEntries[collectionId] ?? [];
+
+    return keys
+      .map((key) => {
+        const [date, reflectionId] = key.split(":");
+        if (!date || !reflectionId) {
+          return null;
+        }
+
+        return hydrateReflectionById(
+          reflectionId,
+          date,
+          appState.favorites,
+          resolveStoredQuoteLanguage(appState),
+        );
+      })
+      .filter((item): item is ReflectionItem => Boolean(item))
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+
   useEffect(() => {
-    if (!isReady || !appState.hasCompletedOnboarding) {
+    if (!storageReady || !appState.hasCompletedOnboarding) {
       return;
     }
 
     setAppState((previous) => {
-      if (previous.dailySelections[currentDateKey]) {
-        return previous;
-      }
-
-      const reflectionId = getReflectionIdForDate(
+      const currentLanguage = resolveStoredQuoteLanguage(previous);
+      const previousDateKey = getAdjacentISODate(currentDateKey, -1);
+      const persistedReflectionId = previous.dailySelections[currentDateKey];
+      const selection = resolveDailyReflectionSelection(
         currentDateKey,
         previous.preferences.selectedCategories,
-        previous.dailySelections[currentDateKey],
+        persistedReflectionId,
+        {
+          shownDatesByReflectionId: previous.shownDatesByReflectionId,
+          previousReflectionId: previous.dailySelections[previousDateKey] ?? null,
+          dailyThemeSelections: previous.dailyThemeSelections,
+          persistedTheme: previous.dailyThemeSelections[currentDateKey] ?? null,
+          language: currentLanguage,
+        },
       );
-      const quoteLanguage = resolveStoredQuoteLanguage(previous, currentDateKey);
+      const reflectionId = selection.entry.id;
+
+      if (
+        persistedReflectionId === reflectionId &&
+        previous.dailyThemeSelections[currentDateKey] === selection.theme &&
+        previous.activeReflectionId === reflectionId &&
+        previous.activeReflectionDateKey === currentDateKey
+      ) {
+        return previous;
+      }
       return {
         ...previous,
         dailySelections: {
           ...previous.dailySelections,
           [currentDateKey]: reflectionId,
         },
-        quoteLanguageSelections: {
-          ...previous.quoteLanguageSelections,
-          [currentDateKey]: quoteLanguage,
+        dailyThemeSelections: {
+          ...previous.dailyThemeSelections,
+          [currentDateKey]: selection.theme,
         },
-        viewedDates: previous.viewedDates.includes(currentDateKey)
-          ? previous.viewedDates
-          : [currentDateKey, ...previous.viewedDates],
+        activeReflectionId: reflectionId,
+        activeReflectionDateKey: currentDateKey,
+        activeReflectionActivatedAt: getReflectionActivationTimestamp(currentDateKey, previous.preferences.notificationTime),
+        shownDatesByReflectionId: markReflectionAsShown(
+          previous.shownDatesByReflectionId,
+          reflectionId,
+          currentDateKey,
+        ),
       };
     });
-  }, [currentDateKey, isReady, appState.hasCompletedOnboarding, appState.preferences.selectedCategories]);
+  }, [
+    currentDateKey,
+    storageReady,
+    appState.hasCompletedOnboarding,
+    appState.preferences.selectedCategories,
+    appState.preferredLanguage,
+    appState.reflectionLanguage,
+    appState.reflectionLanguageMode,
+    appState.reflectionLanguages,
+    appState.subscriptionModel,
+  ]);
+
+  useEffect(() => {
+    if (!storageReady || !appState.hasCompletedOnboarding || !appState.activeReflectionDateKey) {
+      return;
+    }
+
+    if (appState.activeReflectionDateKey !== todayISODate()) {
+      return;
+    }
+
+    if (appState.activeReflectionViewedAtByDate[appState.activeReflectionDateKey]) {
+      return;
+    }
+
+    const reminderSchedule = appState.reminderScheduleByDate[appState.activeReflectionDateKey];
+    if (reminderSchedule?.followUpReminderCount) {
+      return;
+    }
+
+    scheduleFollowUpRemindersForDay(appState.activeReflectionDateKey, appState.preferences.notificationTime, {
+      title: getAppStrings(appState.preferredLanguage).notificationReadyTitle(appState.userName),
+      userName: appState.userName,
+      language: appState.preferredLanguage,
+      notificationsEnabled: appState.preferences.notificationsEnabled,
+      soundEnabled: appState.preferences.soundEnabled,
+      silentMode: appState.preferences.silentMode,
+    })
+      .then((scheduledBatch) => {
+        if (!scheduledBatch.reminderIds.length) {
+          return;
+        }
+
+        setAppState((previous) => ({
+          ...previous,
+          reminderScheduleByDate: {
+            ...previous.reminderScheduleByDate,
+            [appState.activeReflectionDateKey as string]: {
+              reminderIds: scheduledBatch.reminderIds,
+              followUpReminderCount: scheduledBatch.reminderIds.length,
+              scheduledAt: scheduledBatch.scheduledAt,
+              cancelledAt: null,
+            },
+          },
+        }));
+      })
+      .catch((error) => {
+        console.warn("Failed to schedule follow-up reminders", error);
+      });
+  }, [
+    storageReady,
+    appState.activeReflectionDateKey,
+    appState.activeReflectionViewedAtByDate,
+    appState.hasCompletedOnboarding,
+    appState.preferences.notificationTime,
+    appState.preferences.notificationsEnabled,
+    appState.preferences.silentMode,
+    appState.preferences.soundEnabled,
+    appState.preferredLanguage,
+    appState.reminderScheduleByDate,
+    appState.userName,
+  ]);
+
+  useEffect(() => {
+    if (!appBootReady) {
+      return;
+    }
+
+    if (!appState.hasCompletedOnboarding) {
+      setTodayReady(true);
+      return;
+    }
+
+    if (todaysReflection) {
+      console.info("[TODAY] reflection ready");
+      setTodayReady(true);
+      return;
+    }
+
+    setTodayReady(false);
+  }, [appBootReady, appState.hasCompletedOnboarding, todaysReflection]);
+
+  useEffect(() => {
+    if (!appState.preferredLanguage) {
+      return;
+    }
+
+    console.info(
+      `[BOOT] language ready (${appState.preferredLanguage}${isRTLLanguage(appState.preferredLanguage) ? ", rtl" : ", ltr"})`,
+    );
+  }, [appState.preferredLanguage]);
+
+  useEffect(() => {
+    if (!storageReady || !appState.hasCompletedOnboarding || !appState.preferredLanguage) {
+      return;
+    }
+
+    const signature = buildNotificationScheduleSignature(appState.preferredLanguage, appState.preferences);
+    if (notificationScheduleSignatureRef.current === signature) {
+      return;
+    }
+
+    rescheduleDailyNotification(appState.preferences.notificationTime, {
+      language: appState.preferredLanguage,
+      notificationsEnabled: appState.preferences.notificationsEnabled,
+      soundEnabled: appState.preferences.soundEnabled,
+      silentMode: appState.preferences.silentMode,
+    })
+      .then((scheduleResult) => {
+        notificationScheduleSignatureRef.current = signature;
+        setAppState((previous) => ({
+          ...previous,
+          preferences:
+            previous.preferences.notificationsEnabled && !scheduleResult.permissionGranted
+              ? {
+                  ...previous.preferences,
+                  notificationsEnabled: false,
+                }
+              : previous.preferences,
+          lastNotificationMessage: scheduleResult.nextMessage,
+          lastNotificationDate: scheduleResult.nextDate,
+        }));
+      })
+      .catch((error) => {
+        console.warn("Failed to sync daily reflection reminder", error);
+      });
+  }, [
+    appState.hasCompletedOnboarding,
+    appState.preferences,
+    appState.preferredLanguage,
+    storageReady,
+  ]);
 
   async function completeOnboarding(payload: {
     preferredLanguage: SupportedLanguage | null;
     userName: string | null;
     userPreferences: OnboardingPreference[];
+    reminderTime: NotificationPreference;
+    reminderPreset: AppPreferences["reminderPreset"];
   }) {
     const preferenceCategoryMap: Record<OnboardingPreference, ReflectionCategory[]> = {
       clarity: ["clarity"],
@@ -345,51 +761,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextCategories = payload.userPreferences.length
       ? Array.from(new Set(payload.userPreferences.flatMap((preference) => preferenceCategoryMap[preference])))
       : REFLECTION_CATEGORIES;
-    const nextNotificationTime = appState.dailyNotificationTime
-      ? {
-          hour: Number(appState.dailyNotificationTime.split(":")[0] ?? 8),
-          minute: Number(appState.dailyNotificationTime.split(":")[1] ?? 30),
-        }
-      : appState.preferences.notificationTime;
     const nextPreferences: AppPreferences = {
       ...appState.preferences,
       selectedCategories: nextCategories,
-      notificationTime: nextNotificationTime,
+      notificationTime: payload.reminderTime,
+      reminderPreset: payload.reminderPreset,
     };
-    const selectedReflectionId = getReflectionIdForDate(
+    const nextLanguage = sanitizeAppLanguageForSubscription(
+      payload.preferredLanguage ?? (await getInitialLanguage()),
+      "Freemium",
+    );
+    const selection = resolveDailyReflectionSelection(
       currentDateKey,
       nextCategories,
       appState.dailySelections[currentDateKey],
+      {
+        shownDatesByReflectionId: appState.shownDatesByReflectionId,
+        previousReflectionId: appState.dailySelections[getAdjacentISODate(currentDateKey, -1)] ?? null,
+        dailyThemeSelections: appState.dailyThemeSelections,
+        persistedTheme: appState.dailyThemeSelections[currentDateKey] ?? null,
+        language: nextLanguage,
+      },
     );
+    const selectedReflectionId = selection.entry.id;
+
+    await persistLanguageSelection(nextLanguage);
 
     setAppState((previous) => ({
       ...previous,
       hasCompletedOnboarding: true,
       hasSeenTodayIntroOverlay: false,
-      preferredLanguage: payload.preferredLanguage,
-      quoteLanguages: payload.preferredLanguage ? [payload.preferredLanguage] : previous.quoteLanguages,
+      hasSeenDailyReflectionPreview: false,
+      hasSeenInitialPremiumOffer: false,
+      hasSeenPostReflectionPremiumInvite: false,
+      preferredLanguage: nextLanguage,
+      reflectionLanguageMode: "same_as_app",
+      reflectionLanguage: nextLanguage,
+      reflectionLanguages: [nextLanguage],
+      quoteLanguages: [nextLanguage],
       userName: payload.userName?.trim() || null,
       userPreferences: payload.userPreferences,
+      dailyNotificationTime: formatNotificationTime(payload.reminderTime),
       dailySelections: previous.dailySelections[currentDateKey]
         ? previous.dailySelections
         : {
             ...previous.dailySelections,
             [currentDateKey]: selectedReflectionId,
           },
-      quoteLanguageSelections: previous.quoteLanguageSelections[currentDateKey]
-        ? previous.quoteLanguageSelections
+      dailyThemeSelections: previous.dailySelections[currentDateKey]
+        ? previous.dailyThemeSelections
         : {
-            ...previous.quoteLanguageSelections,
-            [currentDateKey]: getDailyReflectionLanguage(
-              currentDateKey,
-              payload.preferredLanguage ? [payload.preferredLanguage] : previous.quoteLanguages,
-              previous.quoteLanguageSelections,
-              payload.preferredLanguage ?? previous.preferredLanguage,
-            ),
+            ...previous.dailyThemeSelections,
+            [currentDateKey]: selection.theme,
           },
-      viewedDates: previous.viewedDates.includes(currentDateKey)
-        ? previous.viewedDates
-        : [currentDateKey, ...previous.viewedDates],
+      activeReflectionId: selectedReflectionId,
+      activeReflectionDateKey: currentDateKey,
+      activeReflectionActivatedAt: getReflectionActivationTimestamp(currentDateKey, payload.reminderTime),
+      shownDatesByReflectionId: previous.dailySelections[currentDateKey]
+        ? previous.shownDatesByReflectionId
+        : markReflectionAsShown(previous.shownDatesByReflectionId, selectedReflectionId, currentDateKey),
       preferences: nextPreferences,
     }));
   }
@@ -398,6 +828,124 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAppState((previous) => ({
       ...previous,
       hasSeenTodayIntroOverlay: true,
+    }));
+  }
+
+  async function markDailyReflectionPreviewSeen() {
+    setAppState((previous) => ({
+      ...previous,
+      hasSeenDailyReflectionPreview: true,
+    }));
+  }
+
+  async function markInitialPremiumOfferSeen() {
+    setAppState((previous) => ({
+      ...previous,
+      hasSeenInitialPremiumOffer: true,
+    }));
+  }
+
+  async function markFreemiumUpgradePromptSeen(options?: { postReflection?: boolean }) {
+    setAppState((previous) => ({
+      ...previous,
+      hasSeenPostReflectionPremiumInvite:
+        options?.postReflection === true ? true : previous.hasSeenPostReflectionPremiumInvite,
+      lastFreemiumUpgradePromptAt: new Date().toISOString(),
+    }));
+  }
+
+  async function markFreemiumUpgradeNotificationScheduled() {
+    setAppState((previous) => ({
+      ...previous,
+      lastFreemiumUpgradeNotificationAt: new Date().toISOString(),
+    }));
+  }
+
+  async function markPremiumPromptShown(context: PremiumPromptContext) {
+    const now = new Date().toISOString();
+    setAppState((previous) => ({
+      ...previous,
+      lastFreemiumUpgradePromptAt: now,
+      premiumPromptHistory: {
+        ...previous.premiumPromptHistory,
+        [context]: {
+          lastShownAt: now,
+          lastDismissedAt: previous.premiumPromptHistory[context]?.lastDismissedAt ?? null,
+          lastOpenedAt: previous.premiumPromptHistory[context]?.lastOpenedAt ?? null,
+        },
+      },
+    }));
+  }
+
+  async function markPremiumPromptDismissed(context: PremiumPromptContext) {
+    const now = new Date().toISOString();
+    setAppState((previous) => ({
+      ...previous,
+      lastFreemiumUpgradePromptAt: now,
+      premiumPromptHistory: {
+        ...previous.premiumPromptHistory,
+        [context]: {
+          lastShownAt: previous.premiumPromptHistory[context]?.lastShownAt ?? now,
+          lastDismissedAt: now,
+          lastOpenedAt: previous.premiumPromptHistory[context]?.lastOpenedAt ?? null,
+        },
+      },
+    }));
+  }
+
+  async function markPremiumPromptOpened(context: PremiumPromptContext) {
+    const now = new Date().toISOString();
+    setAppState((previous) => ({
+      ...previous,
+      lastFreemiumUpgradePromptAt: now,
+      premiumPromptHistory: {
+        ...previous.premiumPromptHistory,
+        [context]: {
+          lastShownAt: previous.premiumPromptHistory[context]?.lastShownAt ?? now,
+          lastDismissedAt: previous.premiumPromptHistory[context]?.lastDismissedAt ?? null,
+          lastOpenedAt: now,
+        },
+      },
+    }));
+  }
+
+  async function markActiveReflectionViewed() {
+    const activeDateKey = appState.activeReflectionDateKey ?? currentDateKey;
+    const reminderSchedule = appState.reminderScheduleByDate[activeDateKey];
+
+    if (reminderSchedule?.reminderIds.length) {
+      await cancelNotificationIds(reminderSchedule.reminderIds);
+    }
+
+    setAppState((previous) => ({
+      ...previous,
+      activeReflectionViewedAtByDate: {
+        ...previous.activeReflectionViewedAtByDate,
+        [activeDateKey]: new Date().toISOString(),
+      },
+      viewedDates: previous.viewedDates.includes(activeDateKey)
+        ? previous.viewedDates
+        : [activeDateKey, ...previous.viewedDates],
+      reminderScheduleByDate: reminderSchedule
+        ? {
+            ...previous.reminderScheduleByDate,
+            [activeDateKey]: {
+              ...reminderSchedule,
+              cancelledAt: new Date().toISOString(),
+            },
+          }
+        : previous.reminderScheduleByDate,
+      lateOpenDeferredDates: previous.lateOpenDeferredDates.filter((date) => date !== activeDateKey),
+    }));
+  }
+
+  async function deferActiveReflectionForToday() {
+    const activeDateKey = appState.activeReflectionDateKey ?? currentDateKey;
+    setAppState((previous) => ({
+      ...previous,
+      lateOpenDeferredDates: previous.lateOpenDeferredDates.includes(activeDateKey)
+        ? previous.lateOpenDeferredDates
+        : [activeDateKey, ...previous.lateOpenDeferredDates],
     }));
   }
 
@@ -410,6 +958,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return {
         ...previous,
         favorites: exists ? nextFavorites : [favoriteKey, ...nextFavorites],
+        collectionEntries: exists
+          ? removeReflectionKeyFromCollections(previous.collectionEntries, favoriteKey)
+          : previous.collectionEntries,
       };
     });
   }
@@ -445,26 +996,169 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    await rescheduleDailyNotification(preference, {
+    const nextPreferences = {
+      ...appState.preferences,
+      notificationTime: preference,
+    };
+    const scheduleResult = await rescheduleDailyNotification(preference, {
       requestPermission: options?.requestPermission,
-      title: options?.notificationContent?.title ?? getAppStrings(appState.preferredLanguage).notificationReadyTitle(appState.userName),
-      body: options?.notificationContent?.body ?? getAppStrings(appState.preferredLanguage).notificationReadyBody(),
+      language: appState.preferredLanguage,
+      notificationsEnabled: nextPreferences.notificationsEnabled,
+      soundEnabled: nextPreferences.soundEnabled,
+      silentMode: nextPreferences.silentMode,
       ...options?.notificationContent,
       userName: options?.notificationContent?.userName ?? appState.userName,
     });
-  }
 
-  async function updateLanguage(language: SupportedLanguage) {
+    notificationScheduleSignatureRef.current = buildNotificationScheduleSignature(
+      appState.preferredLanguage,
+      nextPreferences,
+    );
+
     setAppState((previous) => ({
       ...previous,
-      preferredLanguage: language,
+      preferences:
+        previous.preferences.notificationsEnabled && !scheduleResult.permissionGranted
+          ? {
+              ...previous.preferences,
+              notificationsEnabled: false,
+            }
+          : previous.preferences,
+      lastNotificationMessage: scheduleResult.nextMessage,
+      lastNotificationDate: scheduleResult.nextDate,
     }));
   }
 
-  async function updateQuoteLanguages(languages: SupportedLanguage[]) {
+  async function updateNotificationDeliveryPreferences(
+    preferences: Partial<
+      Pick<AppPreferences, "notificationsEnabled" | "soundEnabled" | "hapticsEnabled" | "silentMode">
+    >,
+  ) {
+    const nextPreferences: AppPreferences = {
+      ...appState.preferences,
+      ...preferences,
+    };
+
+    if (preferences.silentMode === true) {
+      nextPreferences.soundEnabled = false;
+      nextPreferences.hapticsEnabled = false;
+    }
+
+    if (preferences.soundEnabled === true || preferences.hapticsEnabled === true) {
+      nextPreferences.silentMode = false;
+    }
+
     setAppState((previous) => ({
       ...previous,
-      quoteLanguages: languages.length ? Array.from(new Set(languages)) : previous.quoteLanguages,
+      preferences: {
+        ...previous.preferences,
+        ...preferences,
+        soundEnabled:
+          preferences.silentMode === true
+            ? false
+            : preferences.soundEnabled ?? previous.preferences.soundEnabled,
+        hapticsEnabled:
+          preferences.silentMode === true
+            ? false
+            : preferences.hapticsEnabled ?? previous.preferences.hapticsEnabled,
+        silentMode:
+          preferences.soundEnabled === true || preferences.hapticsEnabled === true
+            ? false
+            : preferences.silentMode ?? previous.preferences.silentMode,
+      },
+      lastNotificationMessage: preferences.notificationsEnabled === false ? null : previous.lastNotificationMessage,
+      lastNotificationDate: preferences.notificationsEnabled === false ? null : previous.lastNotificationDate,
+    }));
+
+    if (!nextPreferences.notificationsEnabled) {
+      await clearScheduledNotification();
+      return;
+    }
+
+    const scheduleResult = await rescheduleDailyNotification(nextPreferences.notificationTime, {
+      requestPermission:
+        preferences.notificationsEnabled === true && appState.preferences.notificationsEnabled === false,
+      userName: appState.userName,
+      language: appState.preferredLanguage,
+      notificationsEnabled: nextPreferences.notificationsEnabled,
+      soundEnabled: nextPreferences.soundEnabled,
+      silentMode: nextPreferences.silentMode,
+    });
+
+    notificationScheduleSignatureRef.current = buildNotificationScheduleSignature(
+      appState.preferredLanguage,
+      {
+        notificationTime: nextPreferences.notificationTime,
+        notificationsEnabled:
+          nextPreferences.notificationsEnabled && scheduleResult.permissionGranted,
+        soundEnabled: nextPreferences.soundEnabled,
+        silentMode: nextPreferences.silentMode,
+      },
+    );
+
+    setAppState((previous) => ({
+      ...previous,
+      preferences:
+        previous.preferences.notificationsEnabled && !scheduleResult.permissionGranted
+          ? {
+              ...previous.preferences,
+              notificationsEnabled: false,
+            }
+          : previous.preferences,
+      lastNotificationMessage: scheduleResult.nextMessage,
+      lastNotificationDate: scheduleResult.nextDate,
+    }));
+  }
+
+  async function updateLanguage(language: SupportedLanguage) {
+    const nextLanguage = await persistLanguageSelection(
+      sanitizeAppLanguageForSubscription(language, appState.subscriptionModel),
+    );
+    setAppState((previous) => ({
+      ...previous,
+      ...sanitizeLanguageStateForSubscription(
+        nextLanguage,
+        previous.reflectionLanguageMode,
+        previous.reflectionLanguage,
+        previous.reflectionLanguages,
+        previous.subscriptionModel,
+      ),
+    }));
+  }
+
+  async function updateReflectionLanguageMode(mode: ReflectionLanguageMode) {
+    setAppState((previous) => ({
+      ...previous,
+      ...sanitizeLanguageStateForSubscription(
+        previous.preferredLanguage,
+        mode,
+        previous.reflectionLanguage,
+        previous.reflectionLanguages,
+        previous.subscriptionModel,
+      ),
+    }));
+  }
+
+  async function updateReflectionLanguages(languages: SupportedLanguage[]) {
+    setAppState((previous) => ({
+      ...previous,
+      ...sanitizeLanguageStateForSubscription(
+        previous.preferredLanguage,
+        previous.reflectionLanguageMode,
+        languages[0] ?? previous.preferredLanguage,
+        languages,
+        previous.subscriptionModel,
+      ),
+    }));
+  }
+
+  async function setReflectionCardLanguageSelection(date: string, language: SupportedLanguage) {
+    setAppState((previous) => ({
+      ...previous,
+      quoteLanguageSelections: {
+        ...previous.quoteLanguageSelections,
+        [date]: language,
+      },
     }));
   }
 
@@ -472,6 +1166,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAppState((previous) => ({
       ...previous,
       subscriptionModel: model,
+      ...sanitizeLanguageStateForSubscription(
+        previous.preferredLanguage,
+        previous.reflectionLanguageMode,
+        previous.reflectionLanguage,
+        previous.reflectionLanguages,
+        model,
+      ),
     }));
   }
 
@@ -481,6 +1182,100 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       preferences: {
         ...previous.preferences,
         theme,
+      },
+    }));
+  }
+
+  async function updateAppearanceMode(mode: AppearanceMode) {
+    setAppState((previous) => {
+      if (previous.preferences.appearanceMode === mode) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        preferences: {
+          ...previous.preferences,
+          appearanceMode: mode,
+          selectedAppearancePresetId:
+            mode === "preset"
+              ? previous.preferences.selectedAppearancePresetId ?? "classic-paper"
+              : previous.preferences.selectedAppearancePresetId,
+        },
+      };
+    });
+  }
+
+  async function updateAppearancePreset(appearancePresetId: AppearancePresetId) {
+    setAppState((previous) => {
+      if (
+        previous.preferences.appearanceMode === "preset" &&
+        previous.preferences.selectedAppearancePresetId === appearancePresetId
+      ) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        preferences: {
+          ...previous.preferences,
+          appearanceMode: "preset",
+          selectedAppearancePresetId: appearancePresetId,
+        },
+      };
+    });
+  }
+
+  async function updateAppBackgroundColor(appBackgroundColor: string) {
+    const nextAppBackgroundColor = sanitizeCustomPaperColor(appBackgroundColor, "#FFFFFF");
+    setAppState((previous) => {
+      if (
+        previous.preferences.appBackgroundColor === nextAppBackgroundColor &&
+        previous.preferences.appearanceMode === "custom"
+      ) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        preferences: {
+          ...previous.preferences,
+          appearanceMode: "custom",
+          appBackgroundColor: nextAppBackgroundColor,
+        },
+      };
+    });
+  }
+
+  async function updateTextColorMode(mode: TextColorMode) {
+    setAppState((previous) => {
+      if (
+        previous.preferences.textColorMode === mode &&
+        (mode === "default" || previous.preferences.appearanceMode === "custom")
+      ) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        preferences: {
+          ...previous.preferences,
+          appearanceMode: mode === "custom" ? "custom" : previous.preferences.appearanceMode,
+          textColorMode: mode,
+        },
+      };
+    });
+  }
+
+  async function updateCustomTextColor(textColor: string) {
+    const nextTextColor = sanitizeCustomPaperColor(textColor, "#221B15");
+    setAppState((previous) => ({
+      ...previous,
+      preferences: {
+        ...previous.preferences,
+        appearanceMode: "custom",
+        textColorMode: "custom",
+        customTextColor: nextTextColor,
       },
     }));
   }
@@ -495,6 +1290,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...previous,
         preferences: {
           ...previous.preferences,
+          appearanceMode: "custom",
           paperMode: "preset",
           paperThemeId,
         },
@@ -508,6 +1304,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...previous,
       preferences: {
         ...previous.preferences,
+        appearanceMode: "custom",
         paperMode: "custom",
         customPaperColor: nextPaperColor,
       },
@@ -637,13 +1434,151 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
+  async function createCollection(input: { title: string; description?: string | null }) {
+    const title = input.title.trim();
+    const description = input.description?.trim() || null;
+    const collectionId = createCollectionId();
+    const timestamp = new Date().toISOString();
+
+    if (!title) {
+      return collectionId;
+    }
+
+    setAppState((previous) => ({
+      ...previous,
+      personalCollections: [
+        {
+          id: collectionId,
+          title,
+          description,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+        ...previous.personalCollections,
+      ],
+    }));
+
+    return collectionId;
+  }
+
+  async function renameCollection(collectionId: string, input: { title: string; description?: string | null }) {
+    const title = input.title.trim();
+    const description = input.description?.trim() || null;
+
+    if (!title) {
+      return;
+    }
+
+    setAppState((previous) => ({
+      ...previous,
+      personalCollections: previous.personalCollections.map((collection) =>
+        collection.id === collectionId
+          ? {
+              ...collection,
+              title,
+              description,
+              updatedAt: new Date().toISOString(),
+            }
+          : collection,
+      ),
+    }));
+  }
+
+  async function deleteCollection(collectionId: string) {
+    setAppState((previous) => {
+      const nextEntries = { ...previous.collectionEntries };
+      delete nextEntries[collectionId];
+
+      return {
+        ...previous,
+        personalCollections: previous.personalCollections.filter((collection) => collection.id !== collectionId),
+        collectionEntries: nextEntries,
+      };
+    });
+  }
+
+  async function addReflectionToCollection(collectionId: string, date: string, reflectionId: string) {
+    const reflectionKey = getFavoriteEntryKey(date, reflectionId);
+
+    setAppState((previous) => {
+      if (!previous.favorites.includes(reflectionKey) && !previous.favorites.includes(reflectionId)) {
+        return previous;
+      }
+
+      const currentKeys = previous.collectionEntries[collectionId] ?? [];
+      if (currentKeys.includes(reflectionKey)) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        personalCollections: previous.personalCollections.map((collection) =>
+          collection.id === collectionId
+            ? {
+                ...collection,
+                updatedAt: new Date().toISOString(),
+              }
+            : collection,
+        ),
+        collectionEntries: {
+          ...previous.collectionEntries,
+          [collectionId]: [reflectionKey, ...currentKeys],
+        },
+      };
+    });
+  }
+
+  async function removeReflectionFromCollection(collectionId: string, date: string, reflectionId: string) {
+    const reflectionKey = getFavoriteEntryKey(date, reflectionId);
+
+    setAppState((previous) => {
+      const currentKeys = previous.collectionEntries[collectionId] ?? [];
+      if (!currentKeys.includes(reflectionKey)) {
+        return previous;
+      }
+
+      const nextKeys = currentKeys.filter((key) => key !== reflectionKey);
+      const nextEntries = { ...previous.collectionEntries };
+
+      if (nextKeys.length) {
+        nextEntries[collectionId] = nextKeys;
+      } else {
+        delete nextEntries[collectionId];
+      }
+
+      return {
+        ...previous,
+        personalCollections: previous.personalCollections.map((collection) =>
+          collection.id === collectionId
+            ? {
+                ...collection,
+                updatedAt: new Date().toISOString(),
+              }
+            : collection,
+        ),
+        collectionEntries: nextEntries,
+      };
+    });
+  }
+
   async function resetAllData() {
     await clearScheduledNotification();
+    await clearFreemiumUpgradeReminder();
+    await clearYearEndPremiumReminder();
     await clearAppState();
     setAppState(defaultAppState);
   }
 
   setGlobalPaperThemeId({
+    appearanceMode:
+      appState.subscriptionModel === "Freemium" ? "default" : appState.preferences.appearanceMode,
+    appearancePresetId:
+      appState.subscriptionModel === "Freemium" ? null : appState.preferences.selectedAppearancePresetId,
+    appBackgroundColor:
+      appState.subscriptionModel === "Freemium" ? "#FFFFFF" : appState.preferences.appBackgroundColor,
+    textColorMode:
+      appState.subscriptionModel === "Freemium" ? "default" : appState.preferences.textColorMode,
+    customTextColor: appState.preferences.customTextColor,
     mode: appState.preferences.paperMode,
     paperThemeId: appState.preferences.paperThemeId,
     customPaperColor: appState.preferences.customPaperColor,
@@ -652,26 +1587,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        isReady,
+        isReady: appBootReady,
+        appBootReady,
+        storageReady,
+        todayReady,
+        settingsReady,
         appState,
         colorScheme: resolveColorScheme(appState.preferences.theme, systemScheme),
         todaysReflection,
         archive,
         favorites,
+        collections,
         availableDates,
         personalization,
         getReflectionForDate: lookupReflectionForDate,
         getReflectionNote,
         getReflectionFollowUp,
+        getCollectionById,
+        getCollectionReflections,
+        isReflectionInCollection,
         completeOnboarding,
         markTodayIntroOverlaySeen,
+        markDailyReflectionPreviewSeen,
+        markInitialPremiumOfferSeen,
+        markFreemiumUpgradePromptSeen,
+        markFreemiumUpgradeNotificationScheduled,
+        markPremiumPromptShown,
+        markPremiumPromptDismissed,
+        markPremiumPromptOpened,
+        markActiveReflectionViewed,
+        deferActiveReflectionForToday,
         toggleFavorite,
         updateCategories,
         updateNotificationTime,
+        updateNotificationDeliveryPreferences,
         updateLanguage,
-        updateQuoteLanguages,
+        updateReflectionLanguageMode,
+        updateReflectionLanguages,
+        setReflectionCardLanguageSelection,
         updateSubscriptionModel,
         updateTheme,
+        updateAppearanceMode,
+        updateAppearancePreset,
+        updateAppBackgroundColor,
+        updateTextColorMode,
+        updateCustomTextColor,
         updatePaperTheme,
         updateCustomPaperColor,
         updateNoteBackgroundColor,
@@ -680,6 +1640,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updatePageStyle,
         updateReflectionNote,
         updateReflectionFollowUp,
+        createCollection,
+        renameCollection,
+        deleteCollection,
+        addReflectionToCollection,
+        removeReflectionFromCollection,
         resetAllData,
       }}
     >

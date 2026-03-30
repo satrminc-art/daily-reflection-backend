@@ -26,6 +26,7 @@ export function EditorialHeader({ eyebrow, title, subtitle }: Props) {
 
 const styles = StyleSheet.create({
   container: {
+    width: "100%",
     gap: 8,
     marginBottom: 24,
   },
@@ -44,6 +45,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     lineHeight: 24,
-    maxWidth: 560,
+    width: "100%",
   },
 });

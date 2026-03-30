@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import * as Notifications from "expo-notifications";
 import {
   Alert,
   Animated,
@@ -10,51 +11,65 @@ import {
   Text,
   View,
 } from "react-native";
-import { AdaptiveTimePicker } from "@/components/AdaptiveTimePicker";
 import { CalendarCard } from "@/components/CalendarCard";
 import { EditorialHeader } from "@/components/EditorialHeader";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ReflectionNoteCard } from "@/components/ReflectionNoteCard";
+import { UpgradeCard } from "@/components/premium/UpgradeCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAppContext } from "@/context/AppContext";
 import { useAppStrings } from "@/hooks/useAppStrings";
 import { useMembership } from "@/hooks/useMembership";
 import { useTypography } from "@/hooks/useTypography";
+import {
+  triggerDailyEntryHaptic,
+  triggerSoftConfirmationHaptic,
+  triggerSoftSelectionHaptic,
+} from "@/services/hapticsService";
+import { getPremiumPromptCopy, shouldShowPremiumPrompt } from "@/services/premiumPromptService";
+import { getReflectionEntryById, resolveReflectionTexts } from "@/services/reflectionService";
 import { shareViewAsImage } from "@/services/shareService";
-import { formatLongDate, formatTimeLabel } from "@/utils/date";
+import { formatLongDate, getLocalISODate } from "@/utils/date";
 import { canSaveAdditionalReflection } from "@/utils/membershipHelpers";
+import { getEffectiveReflectionLanguages } from "@/utils/reflection";
 import { palette } from "@/utils/theme";
 
-type TodayOverlayStep = "intro" | "notification-time" | "notification-permission" | null;
+type TodayOverlayStep = "late-open" | "upgrade-invite" | null;
 
 export function TodayScreen() {
   const {
     appState,
+    todayReady,
     colorScheme,
     todaysReflection,
     toggleFavorite,
     favorites,
     availableDates,
     getReflectionForDate,
-    markTodayIntroOverlaySeen,
-    updateNotificationTime,
+    markActiveReflectionViewed,
+    deferActiveReflectionForToday,
+    markFreemiumUpgradePromptSeen,
+    markPremiumPromptDismissed,
+    markPremiumPromptOpened,
+    markPremiumPromptShown,
   } = useAppContext();
+  const navigation = useNavigation<any>();
   const membership = useMembership();
-  const { locale, t, notificationReadyBody, notificationReadyTitle, permissionScheduleBody, welcomeBack } = useAppStrings();
+  const { locale, t, welcomeBack } = useAppStrings();
   const colors = palette[colorScheme];
   const typography = useTypography();
   const shareRef = useRef<View>(null);
   const [isSharing, setIsSharing] = useState(false);
-  const [isSchedulingNotification, setIsSchedulingNotification] = useState(false);
   const [visibleDate, setVisibleDate] = useState<string | null>(todaysReflection?.date ?? null);
   const [overlayStep, setOverlayStep] = useState<TodayOverlayStep>(null);
-  const [notificationDate, setNotificationDate] = useState(() => {
-    const value = new Date();
-    value.setHours(appState.preferences.notificationTime.hour, appState.preferences.notificationTime.minute, 0, 0);
-    return value;
-  });
+  const [upgradeCardDismissed, setUpgradeCardDismissed] = useState(false);
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
+  const entryRevealOpacity = useRef(new Animated.Value(0)).current;
+  const [notificationEntryTargetDateKey, setNotificationEntryTargetDateKey] = useState<string | null>(null);
+  const [notificationEntrySegment, setNotificationEntrySegment] = useState<"morning" | "midday" | "evening">("morning");
+  const [notificationEntryVisible, setNotificationEntryVisible] = useState(false);
+  const hapticsEnabled = appState.preferences.hapticsEnabled && !appState.preferences.silentMode;
 
   useEffect(() => {
     if (todaysReflection?.date) {
@@ -71,18 +86,68 @@ export function TodayScreen() {
   );
 
   useEffect(() => {
-    setNotificationDate((current) => {
-      const next = new Date(current);
-      next.setHours(appState.preferences.notificationTime.hour, appState.preferences.notificationTime.minute, 0, 0);
-      return next;
-    });
-  }, [appState.preferences.notificationTime.hour, appState.preferences.notificationTime.minute]);
+    if (!appState.hasCompletedOnboarding || !appState.hasSeenTodayIntroOverlay || appState.viewedDates.length === 0) {
+      return;
+    }
+
+    if (overlayStep) {
+      return;
+    }
+
+    const activeDateKey = appState.activeReflectionDateKey;
+    const isLateOpenCandidate =
+      activeDateKey === todaysReflection?.date &&
+      activeDateKey === getLocalISODate() &&
+      !appState.activeReflectionViewedAtByDate[activeDateKey] &&
+      !appState.lateOpenDeferredDates.includes(activeDateKey);
+
+    if (isLateOpenCandidate) {
+      setOverlayStep("late-open");
+      return;
+    }
+
+    if (overlayStep === "late-open") {
+      setOverlayStep(null);
+    }
+  }, [
+    appState.activeReflectionDateKey,
+    appState.activeReflectionViewedAtByDate,
+    appState.hasCompletedOnboarding,
+    appState.hasSeenTodayIntroOverlay,
+    appState.lateOpenDeferredDates,
+    appState.viewedDates.length,
+    overlayStep,
+    todaysReflection?.date,
+  ]);
 
   useEffect(() => {
-    if (appState.hasCompletedOnboarding && !appState.hasSeenTodayIntroOverlay) {
-      setOverlayStep("intro");
+    function handleNotificationResponse(response: Notifications.NotificationResponse | null) {
+      if (!response) {
+        return;
+      }
+
+      const data = response.notification.request.content.data as
+        | { source?: string; dateKey?: string; segment?: "morning" | "midday" | "evening" }
+        | undefined;
+
+      if (!data?.source?.startsWith("daily-reflection")) {
+        return;
+      }
+
+      setNotificationEntryTargetDateKey(data.dateKey ?? appState.activeReflectionDateKey ?? getLocalISODate());
+      setNotificationEntrySegment(data.segment ?? "morning");
+      void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
     }
-  }, [appState.hasCompletedOnboarding, appState.hasSeenTodayIntroOverlay]);
+
+    Notifications.getLastNotificationResponseAsync()
+      .then(handleNotificationResponse)
+      .catch(() => undefined);
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+    return () => {
+      subscription.remove();
+    };
+  }, [appState.activeReflectionDateKey]);
 
   const timelineDates = useMemo(() => {
     return availableDates.length ? availableDates : todaysReflection?.date ? [todaysReflection.date] : [];
@@ -90,9 +155,128 @@ export function TodayScreen() {
 
   const currentDate = visibleDate ?? todaysReflection?.date ?? null;
   const currentReflection = currentDate ? getReflectionForDate(currentDate) : todaysReflection;
+  const effectiveReflectionLanguages = useMemo(
+    () =>
+      getEffectiveReflectionLanguages({
+        appLanguage: appState.preferredLanguage,
+        reflectionLanguageMode: appState.reflectionLanguageMode,
+        reflectionLanguage: appState.reflectionLanguage,
+        reflectionLanguages: appState.reflectionLanguages,
+        subscriptionModel: appState.subscriptionModel,
+      }),
+    [
+      appState.preferredLanguage,
+      appState.reflectionLanguage,
+      appState.reflectionLanguageMode,
+      appState.reflectionLanguages,
+      appState.subscriptionModel,
+    ],
+  );
+  const currentReflectionEntry = currentReflection ? getReflectionEntryById(currentReflection.id) : null;
+  const reflectionTextOptions = useMemo(
+    () => (currentReflectionEntry ? resolveReflectionTexts(currentReflectionEntry, effectiveReflectionLanguages) : []),
+    [currentReflectionEntry, effectiveReflectionLanguages],
+  );
+  const selectedReflectionLanguage =
+    (currentReflection?.date ? appState.quoteLanguageSelections[currentReflection.date] : null) ??
+    reflectionTextOptions[0]?.requestedLanguage ??
+    effectiveReflectionLanguages[0] ??
+    "en";
+  const activeReflectionTextOption =
+    reflectionTextOptions.find((option) => option.requestedLanguage === selectedReflectionLanguage) ?? reflectionTextOptions[0] ?? null;
   const currentIndex = currentDate ? timelineDates.indexOf(currentDate) : -1;
   const canGoNewer = currentIndex > 0;
   const canGoOlder = currentIndex >= 0 && currentIndex < timelineDates.length - 1;
+  const reengagementPrompt = useMemo(() => getPremiumPromptCopy("reengagement", appState.preferredLanguage), [appState.preferredLanguage]);
+  const savePrompt = useMemo(() => getPremiumPromptCopy("save", appState.preferredLanguage), [appState.preferredLanguage]);
+  const shouldShowReengagementPrompt =
+    membership.currentPlanLabel === "Freemium" &&
+    overlayStep === null &&
+    !upgradeCardDismissed &&
+    appState.hasSeenPostReflectionPremiumInvite &&
+    appState.viewedDates.length >= 3 &&
+    shouldShowPremiumPrompt({
+      context: "reengagement",
+      isPremium: false,
+      hasCompletedOnboarding: appState.hasCompletedOnboarding,
+      historyEntry: appState.premiumPromptHistory.reengagement,
+    });
+
+  useEffect(() => {
+    if (!shouldShowReengagementPrompt) {
+      return;
+    }
+
+    void markPremiumPromptShown("reengagement");
+  }, [markPremiumPromptShown, shouldShowReengagementPrompt]);
+
+  useEffect(() => {
+    if (!currentReflection?.date || !notificationEntryTargetDateKey) {
+      return;
+    }
+
+    if (currentReflection.date !== notificationEntryTargetDateKey) {
+      return;
+    }
+
+    setNotificationEntryVisible(true);
+    entryRevealOpacity.setValue(0);
+    triggerDailyEntryHaptic(notificationEntrySegment, hapticsEnabled);
+
+    Animated.sequence([
+      Animated.delay(180),
+      Animated.timing(entryRevealOpacity, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.delay(260),
+      Animated.timing(entryRevealOpacity, {
+        toValue: 0,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setNotificationEntryVisible(false);
+      setNotificationEntryTargetDateKey(null);
+      void markActiveReflectionViewed();
+    });
+  }, [
+    currentReflection?.date,
+    entryRevealOpacity,
+    hapticsEnabled,
+    markActiveReflectionViewed,
+    notificationEntrySegment,
+    notificationEntryTargetDateKey,
+  ]);
+
+  useEffect(() => {
+    if (!currentReflection?.date) {
+      return;
+    }
+
+    if (overlayStep !== null || notificationEntryVisible || notificationEntryTargetDateKey === currentReflection.date) {
+      return;
+    }
+
+    if (appState.lateOpenDeferredDates.includes(currentReflection.date)) {
+      return;
+    }
+
+    if (appState.activeReflectionViewedAtByDate[currentReflection.date]) {
+      return;
+    }
+
+    void markActiveReflectionViewed();
+  }, [
+    currentReflection?.date,
+    appState.activeReflectionViewedAtByDate,
+    appState.lateOpenDeferredDates,
+    markActiveReflectionViewed,
+    notificationEntryTargetDateKey,
+    notificationEntryVisible,
+    overlayStep,
+  ]);
 
   useEffect(() => {
     if (!timelineDates.length) {
@@ -170,6 +354,19 @@ export function TodayScreen() {
     [canGoNewer, canGoOlder, currentIndex, timelineDates, translateX, opacity],
   );
 
+  if (!todayReady) {
+    return (
+      <ScreenContainer scroll>
+        <EditorialHeader title={t("today.title")} subtitle={t("today.preparing")} />
+        <View style={[styles.placeholderCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.placeholderLineShort, { backgroundColor: colors.border }]} />
+          <View style={[styles.placeholderLineLong, { backgroundColor: colors.border }]} />
+          <View style={[styles.placeholderLineMedium, { backgroundColor: colors.border }]} />
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   if (!currentReflection) {
     return (
       <ScreenContainer scroll>
@@ -194,52 +391,15 @@ export function TodayScreen() {
     }
   }
 
-  async function handleIntroContinue() {
-    await markTodayIntroOverlaySeen();
-    setOverlayStep("notification-time");
+  async function handleLateOpenContinue() {
+    triggerSoftConfirmationHaptic(hapticsEnabled);
+    await markActiveReflectionViewed();
+    setOverlayStep(null);
   }
 
-  async function handleNotificationTimeContinue() {
-    await updateNotificationTime(
-      {
-        hour: notificationDate.getHours(),
-        minute: notificationDate.getMinutes(),
-      },
-      { schedule: false },
-    );
-    setOverlayStep("notification-permission");
-  }
-
-  async function handleAllowNotifications() {
-    try {
-      setIsSchedulingNotification(true);
-      await updateNotificationTime(
-        {
-          hour: notificationDate.getHours(),
-          minute: notificationDate.getMinutes(),
-        },
-        {
-          requestPermission: true,
-          notificationContent: {
-            title: notificationReadyTitle(appState.userName),
-            body: notificationReadyBody(),
-          },
-        },
-      );
-    } finally {
-      setIsSchedulingNotification(false);
-      setOverlayStep(null);
-    }
-  }
-
-  async function handleSkipNotifications() {
-    await updateNotificationTime(
-      {
-        hour: notificationDate.getHours(),
-        minute: notificationDate.getMinutes(),
-      },
-      { schedule: false },
-    );
+  async function handleLateOpenLater() {
+    triggerSoftSelectionHaptic(hapticsEnabled);
+    await deferActiveReflectionForToday();
     setOverlayStep(null);
   }
 
@@ -256,6 +416,51 @@ export function TodayScreen() {
     }
 
     await toggleFavorite(activeReflection.id, activeReflection.date);
+
+    if (
+      membership.currentPlanLabel === "Freemium" &&
+      !activeReflection.isFavorite &&
+      !appState.hasSeenPostReflectionPremiumInvite &&
+      shouldShowPremiumPrompt({
+        context: "save",
+        isPremium: false,
+        hasCompletedOnboarding: appState.hasCompletedOnboarding,
+        historyEntry: appState.premiumPromptHistory.save,
+      })
+    ) {
+      await markPremiumPromptShown("save");
+      setOverlayStep("upgrade-invite");
+    }
+  }
+
+  async function handleUpgradeInviteDismiss() {
+    triggerSoftSelectionHaptic(hapticsEnabled);
+    await markFreemiumUpgradePromptSeen({ postReflection: true });
+    await markPremiumPromptDismissed("save");
+    setOverlayStep(null);
+  }
+
+  async function handleUpgradeInviteOpen() {
+    triggerSoftConfirmationHaptic(hapticsEnabled);
+    await markFreemiumUpgradePromptSeen({ postReflection: true });
+    await markPremiumPromptOpened("save");
+    setOverlayStep(null);
+    navigation.navigate("Membership");
+  }
+
+  async function handleGentleUpgradeOpen() {
+    triggerSoftSelectionHaptic(hapticsEnabled);
+    await markFreemiumUpgradePromptSeen();
+    await markPremiumPromptOpened("reengagement");
+    setUpgradeCardDismissed(true);
+    navigation.navigate("Membership");
+  }
+
+  async function handleGentleUpgradeDismiss() {
+    triggerSoftSelectionHaptic(hapticsEnabled);
+    await markFreemiumUpgradePromptSeen();
+    await markPremiumPromptDismissed("reengagement");
+    setUpgradeCardDismissed(true);
   }
 
   return (
@@ -278,7 +483,29 @@ export function TodayScreen() {
             },
           ]}
         >
-          <CalendarCard ref={shareRef} reflection={currentReflection} />
+          <CalendarCard
+            ref={shareRef}
+            reflection={currentReflection}
+            reflectionText={activeReflectionTextOption?.text ?? currentReflection.text}
+            showSourceType={false}
+            metadataSeparator="·"
+          />
+          {notificationEntryVisible ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.entryReveal,
+                {
+                  opacity: entryRevealOpacity,
+                  backgroundColor: colors.overlayBackdrop,
+                },
+              ]}
+            >
+              <Text style={[styles.entryRevealText, { color: colors.primaryText, fontFamily: typography.display }]}>
+                {t("today.notificationEntryLine")}
+              </Text>
+            </Animated.View>
+          ) : null}
         </Animated.View>
       </View>
 
@@ -315,7 +542,24 @@ export function TodayScreen() {
 
       <Text style={[styles.helperText, { color: colors.tertiaryText }]}>{t("today.helper")}</Text>
 
-      <ReflectionNoteCard date={activeReflection.date} reflectionId={activeReflection.id} isSaved={activeReflection.isFavorite} />
+      {shouldShowReengagementPrompt ? (
+        <UpgradeCard
+          title={reengagementPrompt.title}
+          body={reengagementPrompt.body}
+          actionLabel={reengagementPrompt.cta}
+          secondaryLabel={reengagementPrompt.secondary}
+          onPress={() => void handleGentleUpgradeOpen()}
+          onSecondaryPress={() => void handleGentleUpgradeDismiss()}
+        />
+      ) : null}
+
+      <ReflectionNoteCard
+        date={activeReflection.date}
+        reflectionId={activeReflection.id}
+        isSaved={activeReflection.isFavorite}
+        reflectionText={activeReflectionTextOption?.text ?? activeReflection.text}
+        reflectionLanguage={activeReflectionTextOption?.requestedLanguage ?? selectedReflectionLanguage}
+      />
 
       <Modal visible={overlayStep !== null} transparent animationType="fade" statusBarTranslucent>
         <View style={[styles.overlayBackdrop, { backgroundColor: colors.overlayBackdrop }]}>
@@ -331,48 +575,36 @@ export function TodayScreen() {
           >
             <View style={[styles.overlayBinding, { backgroundColor: colors.binding }]} />
 
-            {overlayStep === "intro" ? (
+            {overlayStep === "late-open" ? (
               <>
-                    <Text style={[styles.overlayTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
-                  {t("onboarding.introTitle")}
+                <Text style={[styles.overlayEyebrow, { color: colors.accent }]}>{t("today.eyebrow")}</Text>
+                <Text style={[styles.overlayTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
+                  {t("today.lateOpenTitle")}
                 </Text>
-                <View style={styles.overlayFooter}>
-                  <PrimaryButton label={t("common.continue")} onPress={handleIntroContinue} />
-                </View>
-              </>
-            ) : null}
-
-            {overlayStep === "notification-time" ? (
-              <>
-                <Text style={[styles.overlayEyebrow, { color: colors.accent }]}>{t("settings.notificationTime")}</Text>
-                <Text style={[styles.overlayTitle, { color: colors.primaryText }]}>{t("onboarding.notificationTimeTitle")}</Text>
-                <Text style={[styles.overlayBody, { color: colors.secondaryText }]}>{t("onboarding.notificationTimeBody")}</Text>
-                <View style={[styles.timeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.timeLabel, { color: colors.secondaryText }]}>
-                    {formatTimeLabel(notificationDate.getHours(), notificationDate.getMinutes(), locale)}
-                  </Text>
-                  <AdaptiveTimePicker value={notificationDate} onChange={setNotificationDate} />
-                </View>
-                <View style={styles.overlayFooter}>
-                  <PrimaryButton label={t("common.continue")} onPress={handleNotificationTimeContinue} />
-                </View>
-              </>
-            ) : null}
-
-            {overlayStep === "notification-permission" ? (
-              <>
-                <Text style={[styles.overlayEyebrow, { color: colors.accent }]}>{t("tabs.today")}</Text>
-                <Text style={[styles.overlayTitle, { color: colors.primaryText }]}>{t("onboarding.notificationPermissionTitle")}</Text>
                 <Text style={[styles.overlayBody, { color: colors.secondaryText }]}>
-                  {permissionScheduleBody(formatTimeLabel(notificationDate.getHours(), notificationDate.getMinutes(), locale))}
+                  {t("today.lateOpenBody")}
                 </Text>
                 <View style={styles.overlayFooter}>
+                  <PrimaryButton label={t("today.lateOpenPrimary")} onPress={handleLateOpenContinue} />
                   <PrimaryButton
-                    label={isSchedulingNotification ? t("common.preparing") : t("common.allowNotifications")}
-                    onPress={handleAllowNotifications}
-                    disabled={isSchedulingNotification}
+                    label={t("today.lateOpenSecondary")}
+                    onPress={handleLateOpenLater}
+                    variant="ghost"
                   />
-                  <PrimaryButton label={t("common.notNow")} onPress={handleSkipNotifications} variant="ghost" />
+                </View>
+              </>
+            ) : overlayStep === "upgrade-invite" ? (
+              <>
+                <Text style={[styles.overlayEyebrow, { color: colors.accent }]}>{t("membership.planPremium")}</Text>
+                <Text style={[styles.overlayTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
+                  {savePrompt.title}
+                </Text>
+                <Text style={[styles.overlayBody, { color: colors.secondaryText }]}>
+                  {savePrompt.body}
+                </Text>
+                <View style={styles.overlayFooter}>
+                  <PrimaryButton label={savePrompt.cta} onPress={() => void handleUpgradeInviteOpen()} />
+                  <PrimaryButton label={savePrompt.secondary ?? t("common.notNow")} onPress={() => void handleUpgradeInviteDismiss()} variant="ghost" />
                 </View>
               </>
             ) : null}
@@ -412,6 +644,20 @@ const styles = StyleSheet.create({
   pageFront: {
     position: "relative",
   },
+  entryReveal: {
+    position: "absolute",
+    inset: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 32,
+    paddingHorizontal: 28,
+  },
+  entryRevealText: {
+    fontSize: 26,
+    lineHeight: 33,
+    textAlign: "center",
+    letterSpacing: Platform.OS === "android" ? -0.2 : -0.35,
+  },
   captionRow: {
     gap: 8,
     marginBottom: 24,
@@ -425,8 +671,9 @@ const styles = StyleSheet.create({
   },
   captionHint: {
     fontSize: 13,
-    maxWidth: 260,
+    width: "100%",
     textAlign: "center",
+    lineHeight: 20,
   },
   actions: {
     flexDirection: "row",
@@ -443,6 +690,26 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: "center",
     marginBottom: 22,
+  },
+  upgradeCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    gap: 10,
+    marginBottom: 18,
+  },
+  upgradeTitle: {
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  upgradeBody: {
+    fontSize: 15,
+    lineHeight: 23,
+  },
+  upgradeActions: {
+    gap: 10,
+    marginTop: 4,
   },
   overlayBackdrop: {
     flex: 1,
@@ -494,18 +761,28 @@ const styles = StyleSheet.create({
     marginTop: 24,
     gap: 12,
   },
-  timeCard: {
+  placeholderCard: {
     borderWidth: 1,
     borderRadius: 22,
-    padding: 16,
-    gap: 10,
-    marginTop: 20,
+    padding: 22,
+    gap: 12,
   },
-  timeLabel: {
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: "center",
-    textTransform: "uppercase",
-    letterSpacing: 1.6,
+  placeholderLineShort: {
+    width: "36%",
+    height: 10,
+    borderRadius: 999,
+    opacity: 0.55,
+  },
+  placeholderLineLong: {
+    width: "92%",
+    height: 14,
+    borderRadius: 999,
+    opacity: 0.45,
+  },
+  placeholderLineMedium: {
+    width: "74%",
+    height: 14,
+    borderRadius: 999,
+    opacity: 0.4,
   },
 });

@@ -15,7 +15,7 @@ export function EmptyState({ title, message }: Props) {
   const typography = useTypography();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.elevatedSurface, borderColor: colors.borderStrong }]}>
       <Text style={[styles.title, { color: colors.primaryText, fontFamily: typography.display }]}>{title}</Text>
       <Text style={[styles.message, { color: colors.secondaryText }]}>{message}</Text>
     </View>
@@ -28,6 +28,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     gap: 10,
+    width: "100%",
   },
   title: {
     fontSize: 24,

@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -13,24 +13,12 @@ import { ArchiveScreen } from "@/screens/ArchiveScreen";
 import { FavoritesScreen } from "@/screens/FavoritesScreen";
 import { ReflectionDetailScreen } from "@/screens/ReflectionDetailScreen";
 import { MembershipScreen } from "@/screens/MembershipScreen";
-import { PaywallScreen } from "@/screens/PaywallScreen";
+import { ReflectionPreviewScreen } from "@/screens/ReflectionPreviewScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
-import { ReflectionDetailParams } from "@/types/reflection";
+import { CollectionsScreen } from "@/screens/CollectionsScreen";
+import { CollectionDetailScreen } from "@/screens/CollectionDetailScreen";
+import { RootStackParamList, TabParamList } from "@/navigation/types";
 import { palette } from "@/utils/theme";
-
-export type RootStackParamList = {
-  MainTabs: undefined;
-  ReflectionDetail: ReflectionDetailParams;
-  Membership: undefined;
-  Paywall: { source?: "archive" | "settings" | "premium-preview" } | undefined;
-};
-
-export type TabParamList = {
-  Today: undefined;
-  Archive: undefined;
-  Favorites: undefined;
-  Settings: undefined;
-};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<TabParamList>();
@@ -127,8 +115,8 @@ function MainTabs() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: colors.tabBarBackground,
+          borderTopColor: colors.borderStrong,
           height: 64 + insets.bottom,
           paddingBottom: Math.max(10, insets.bottom),
           paddingTop: 8,
@@ -139,8 +127,8 @@ function MainTabs() {
           letterSpacing: 0.2,
           fontFamily: typography.meta,
         },
-        tabBarActiveTintColor: colors.primaryText,
-        tabBarInactiveTintColor: colors.secondaryText,
+        tabBarActiveTintColor: colors.tabBarActive,
+        tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarHideOnKeyboard: true,
         tabBarIconStyle: {
           marginTop: 2,
@@ -186,36 +174,53 @@ function MainTabs() {
 }
 
 export function AppNavigator() {
-  const { isReady, appState, colorScheme } = useAppContext();
-  const { reflectionTitle, t } = useAppStrings();
+  const { appBootReady, appState, colorScheme } = useAppContext();
+  const { reflectionTitle, t, membershipFeatureLabel } = useAppStrings();
   const typography = useTypography();
   const colors = palette[colorScheme];
   const navigationTheme = {
     ...(colorScheme === "dark" ? DarkTheme : DefaultTheme),
     colors: {
       ...(colorScheme === "dark" ? DarkTheme.colors : DefaultTheme.colors),
-      background: colors.surface,
-      card: colors.surface,
+      background: colors.appBackground,
+      card: colors.tabBarBackground,
       border: colors.border,
       text: colors.primaryText,
       primary: colors.accent,
     },
   };
 
-  if (!isReady) {
-    return <ActivityIndicator style={{ flex: 1 }} color={colors.primaryText} />;
+  if (!appBootReady) {
+    return (
+      <View style={[styles.bootScreen, { backgroundColor: colors.appBackground }]}>
+        <View style={[styles.bootCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.bootEyebrow, { color: colors.accent }]}>
+            {t("today.title")}
+          </Text>
+          <Text style={[styles.bootTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
+            {t("today.preparing")}
+          </Text>
+        </View>
+      </View>
+    );
   }
 
-  if (!appState.hasCompletedOnboarding) {
-    return <OnboardingScreen />;
-  }
+  const initialRouteName: keyof RootStackParamList = !appState.hasCompletedOnboarding
+    ? "OnboardingFlow"
+    : !appState.hasSeenDailyReflectionPreview
+    ? "ReflectionPreview"
+    : !appState.hasSeenInitialPremiumOffer
+      ? "Membership"
+      : "Today";
 
   return (
     <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
+        initialRouteName={initialRouteName}
         screenOptions={{
+          headerShown: false,
           headerStyle: {
-            backgroundColor: colors.surface,
+            backgroundColor: colors.elevatedSurface,
           },
           headerTintColor: colors.primaryText,
           headerTitleStyle: {
@@ -223,16 +228,37 @@ export function AppNavigator() {
             fontFamily: typography.display,
           },
           contentStyle: {
-            backgroundColor: colors.surface,
+            backgroundColor: colors.appBackground,
           },
         }}
       >
-        <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+        <Stack.Screen name="OnboardingFlow" component={OnboardingScreen} />
+        <Stack.Screen name="ReflectionPreview" component={ReflectionPreviewScreen} />
+        <Stack.Screen name="Today" component={MainTabs} options={{ headerShown: false }} />
         <Stack.Screen
           name="ReflectionDetail"
           component={ReflectionDetailScreen}
           options={{
+            headerShown: true,
             title: reflectionTitle(),
+            headerBackTitleVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name="Collections"
+          component={CollectionsScreen}
+          options={{
+            headerShown: true,
+            title: membershipFeatureLabel("personal-collections"),
+            headerBackTitleVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name="CollectionDetail"
+          component={CollectionDetailScreen}
+          options={{
+            headerShown: true,
+            title: membershipFeatureLabel("personal-collections"),
             headerBackTitleVisible: false,
           }}
         />
@@ -240,17 +266,9 @@ export function AppNavigator() {
           name="Membership"
           component={MembershipScreen}
           options={{
+            headerShown: true,
             title: t("membership.title"),
             headerBackTitleVisible: false,
-          }}
-        />
-        <Stack.Screen
-          name="Paywall"
-          component={PaywallScreen}
-          options={{
-            title: "Premium",
-            headerBackTitleVisible: false,
-            presentation: "modal",
           }}
         />
       </Stack.Navigator>
@@ -377,5 +395,29 @@ const styles = StyleSheet.create({
     width: 4,
     height: 2,
     borderRadius: 999,
+  },
+  bootScreen: {
+    flex: 1,
+    padding: 24,
+    justifyContent: "center",
+  },
+  bootCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    gap: 8,
+  },
+  bootEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 1.8,
+    textTransform: "uppercase",
+    fontWeight: "700",
+  },
+  bootTitle: {
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: "500",
   },
 });

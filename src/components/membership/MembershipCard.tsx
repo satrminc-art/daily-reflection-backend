@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { PlanBadge } from "@/components/membership/PlanBadge";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { useAppContext } from "@/context/AppContext";
+import { useAppStrings } from "@/hooks/useAppStrings";
 import { useTypography } from "@/hooks/useTypography";
 import { palette } from "@/utils/theme";
 
@@ -34,6 +35,7 @@ export function MembershipCard({
   actionDisabled = false,
 }: Props) {
   const { colorScheme } = useAppContext();
+  const { planLabel } = useAppStrings();
   const colors = palette[colorScheme];
   const typography = useTypography();
   const isPremiumTier = plan === "Premium" || plan === "Lifelong";
@@ -51,7 +53,7 @@ export function MembershipCard({
     >
       <View style={styles.topRow}>
         <View style={styles.titleWrap}>
-          <Text style={[styles.title, { color: colors.primaryText, fontFamily: typography.display }]}>{plan}</Text>
+          <Text style={[styles.title, { color: colors.primaryText, fontFamily: typography.display }]}>{planLabel(plan)}</Text>
           {planBadge ? <PlanBadge label={planBadge} subtle /> : null}
         </View>
         {active && activeLabel ? <PlanBadge label={activeLabel} /> : null}
@@ -87,16 +89,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: "column",
+    justifyContent: "flex-start",
     gap: 12,
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   titleWrap: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: "column",
+    alignItems: "flex-start",
     gap: 8,
-    flex: 1,
+    width: "100%",
   },
   title: {
     fontSize: 24,

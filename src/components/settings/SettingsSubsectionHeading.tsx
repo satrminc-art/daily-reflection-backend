@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   row: {
     minHeight: 26,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
   },
@@ -65,8 +65,9 @@ const styles = StyleSheet.create({
   },
   titleWrap: {
     flex: 1,
+    minWidth: 0,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 10,
   },
   bullet: {
@@ -78,10 +79,15 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
+    minWidth: 0,
     fontSize: 16,
     fontWeight: "600",
+    lineHeight: 22,
   },
   value: {
     fontSize: 14,
+    lineHeight: 20,
+    flexShrink: 1,
+    textAlign: "right",
   },
 });

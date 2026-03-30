@@ -1,4 +1,6 @@
-import { consumeFollowUpQuota } from "../../lib/limits";
+import { resolveEffectiveEntitlement } from "../../lib/entitlements";
+import { enforceFollowUpLimits } from "../../lib/limits";
+import { logApiEvent, buildRequestFingerprint } from "../../lib/logging";
 import { generateReflectionFollowUps } from "../../lib/openai";
 import type {
   ReflectionFollowUpErrorCode,
@@ -6,6 +8,25 @@ import type {
   ReflectionFollowUpResponse,
 } from "../../src/types/ai";
 import type { MembershipTier } from "../../src/types/membership";
+
+const ROUTE_PATH = "/api/reflection/follow-up";
+const MAX_BODY_BYTES = 8_192;
+const MAX_REFLECTION_ID_LENGTH = 120;
+const MAX_REFLECTION_TEXT_LENGTH = 600;
+const MAX_USER_NOTE_LENGTH = 1_200;
+const MAX_CATEGORY_LENGTH = 80;
+const MAX_LANGUAGE_LENGTH = 24;
+const MAX_USER_ID_LENGTH = 120;
+const ALLOWED_KEYS = [
+  "reflectionId",
+  "reflectionText",
+  "userNote",
+  "category",
+  "appLanguage",
+  "reflectionLanguage",
+  "entitlement",
+  "userId",
+] as const;
 
 type RouteRequest = {
   method?: string;
@@ -19,46 +40,9 @@ type RouteResponse = {
   json: (body: ReflectionFollowUpResponse) => void;
 };
 
-function jsonError(
-  res: RouteResponse,
-  status: number,
-  code: ReflectionFollowUpErrorCode,
-  message: string,
-  details?: string,
-) {
-  return res.status(status).json({
-    success: false,
-    error: {
-      code,
-      message,
-      details,
-    },
-  });
-}
-
-function parseBody(body: unknown): Partial<ReflectionFollowUpRequest> | null {
-  if (!body) {
-    return null;
-  }
-
-  if (typeof body === "string") {
-    try {
-      return JSON.parse(body) as Partial<ReflectionFollowUpRequest>;
-    } catch {
-      return null;
-    }
-  }
-
-  if (typeof body === "object") {
-    return body as Partial<ReflectionFollowUpRequest>;
-  }
-
-  return null;
-}
-
-function isEntitlement(value: unknown): value is MembershipTier {
-  return value === "freemium" || value === "premium" || value === "lifelong";
-}
+type ValidationResult =
+  | { ok: true; data: ReflectionFollowUpRequest }
+  | { ok: false; code: ReflectionFollowUpErrorCode; message: string };
 
 function getHeader(req: RouteRequest, headerName: string) {
   const raw = req.headers[headerName];
@@ -68,47 +52,180 @@ function getHeader(req: RouteRequest, headerName: string) {
   return raw;
 }
 
-function buildUsageIdentifier(req: RouteRequest, body: ReflectionFollowUpRequest) {
-  const forwardedFor = getHeader(req, "x-forwarded-for")?.split(",")[0]?.trim();
-  const userAgent = getHeader(req, "user-agent")?.trim();
-  return body.userId?.trim() || [forwardedFor, userAgent].filter(Boolean).join("|") || body.reflectionId;
+function getClientIp(req: RouteRequest) {
+  return (
+    getHeader(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+    getHeader(req, "x-real-ip")?.trim() ||
+    "unknown"
+  );
 }
 
-function validateRequest(body: Partial<ReflectionFollowUpRequest> | null): ReflectionFollowUpRequest | null {
+function sendJson(
+  req: RouteRequest,
+  res: RouteResponse,
+  args:
+    | { status: number; body: ReflectionFollowUpResponse; userId?: string; reason?: string }
+    | { status: number; body: ReflectionFollowUpResponse; userId?: string; reason?: string },
+) {
+  const fingerprint = buildRequestFingerprint({
+    ip: getClientIp(req),
+    userAgent: getHeader(req, "user-agent"),
+  });
+
+  logApiEvent({
+    route: ROUTE_PATH,
+    status: args.status,
+    fingerprint,
+    userId: args.userId,
+    reason: args.reason,
+  });
+
+  return res.status(args.status).json(args.body);
+}
+
+function jsonError(
+  req: RouteRequest,
+  res: RouteResponse,
+  status: number,
+  code: ReflectionFollowUpErrorCode,
+  message: string,
+  userId?: string,
+  reason?: string,
+) {
+  return sendJson(req, res, {
+    status,
+    userId,
+    reason,
+    body: {
+      success: false,
+      error: {
+        code,
+        message,
+      },
+    },
+  });
+}
+
+function parseBody(body: unknown): Record<string, unknown> | null {
   if (!body) {
     return null;
   }
 
-  if (
-    typeof body.reflectionId !== "string" ||
-    typeof body.reflectionText !== "string" ||
-    typeof body.userNote !== "string" ||
-    typeof body.appLanguage !== "string" ||
-    typeof body.reflectionLanguage !== "string" ||
-    !isEntitlement(body.entitlement)
-  ) {
+  if (typeof body === "string") {
+    try {
+      const parsed = JSON.parse(body) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof body === "object" && !Array.isArray(body)) {
+    return body as Record<string, unknown>;
+  }
+
+  return null;
+}
+
+function getBodySize(body: Record<string, unknown>) {
+  return Buffer.byteLength(JSON.stringify(body), "utf8");
+}
+
+function trimString(value: unknown, maxLength: number) {
+  if (typeof value !== "string") {
     return null;
   }
 
-  const reflectionId = body.reflectionId.trim();
-  const reflectionText = body.reflectionText.trim();
-  const userNote = body.userNote.trim();
-  const appLanguage = body.appLanguage.trim();
-  const reflectionLanguage = body.reflectionLanguage.trim();
-
-  if (!reflectionId || !reflectionText || !userNote || !appLanguage || !reflectionLanguage) {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > maxLength) {
     return null;
+  }
+
+  return trimmed;
+}
+
+function validateOptionalString(value: unknown, maxLength: number) {
+  if (value === undefined) {
+    return { ok: true as const, value: undefined };
+  }
+
+  const trimmed = trimString(value, maxLength);
+  if (trimmed === null) {
+    return { ok: false as const };
+  }
+
+  return { ok: true as const, value: trimmed };
+}
+
+function isEntitlement(value: unknown): value is MembershipTier {
+  return value === "freemium" || value === "premium" || value === "lifelong";
+}
+
+function validateRequest(body: Record<string, unknown> | null): ValidationResult {
+  if (!body) {
+    return {
+      ok: false,
+      code: "invalid_request",
+      message: "The follow-up request body is missing or invalid.",
+    };
+  }
+
+  if (getBodySize(body) > MAX_BODY_BYTES) {
+    return {
+      ok: false,
+      code: "invalid_request",
+      message: "The follow-up request body is too large.",
+    };
+  }
+
+  const bodyKeys = Object.keys(body);
+  if (bodyKeys.some((key) => !ALLOWED_KEYS.includes(key as (typeof ALLOWED_KEYS)[number]))) {
+    return {
+      ok: false,
+      code: "invalid_request",
+      message: "The follow-up request body contains unsupported fields.",
+    };
+  }
+
+  const reflectionId = trimString(body.reflectionId, MAX_REFLECTION_ID_LENGTH);
+  const reflectionText = trimString(body.reflectionText, MAX_REFLECTION_TEXT_LENGTH);
+  const userNote = trimString(body.userNote, MAX_USER_NOTE_LENGTH);
+  const appLanguage = trimString(body.appLanguage, MAX_LANGUAGE_LENGTH);
+  const reflectionLanguage = trimString(body.reflectionLanguage, MAX_LANGUAGE_LENGTH);
+  const categoryResult = validateOptionalString(body.category, MAX_CATEGORY_LENGTH);
+  const userIdResult = validateOptionalString(body.userId, MAX_USER_ID_LENGTH);
+
+  if (
+    !reflectionId ||
+    !reflectionText ||
+    !userNote ||
+    !appLanguage ||
+    !reflectionLanguage ||
+    !categoryResult.ok ||
+    !userIdResult.ok ||
+    !isEntitlement(body.entitlement)
+  ) {
+    return {
+      ok: false,
+      code: "invalid_request",
+      message: "The follow-up request body is incomplete or invalid.",
+    };
   }
 
   return {
-    reflectionId,
-    reflectionText: reflectionText.slice(0, 1500),
-    userNote: userNote.slice(0, 4000),
-    category: typeof body.category === "string" ? body.category.trim() || undefined : undefined,
-    appLanguage,
-    reflectionLanguage,
-    entitlement: body.entitlement,
-    userId: typeof body.userId === "string" ? body.userId.trim() || undefined : undefined,
+    ok: true,
+    data: {
+      reflectionId,
+      reflectionText,
+      userNote,
+      category: categoryResult.value,
+      appLanguage,
+      reflectionLanguage,
+      entitlement: body.entitlement,
+      userId: userIdResult.value,
+    },
   };
 }
 
@@ -116,51 +233,86 @@ export default async function handler(req: RouteRequest, res: RouteResponse) {
   res.setHeader("Allow", "POST");
 
   if (req.method !== "POST") {
-    return jsonError(res, 405, "method_not_allowed", "Only POST is supported.");
+    return jsonError(req, res, 405, "method_not_allowed", "Only POST is supported.", undefined, "method");
   }
 
-  const validatedBody = validateRequest(parseBody(req.body));
-  if (!validatedBody) {
-    return jsonError(
-      res,
-      400,
-      "invalid_request",
-      "The follow-up request body is incomplete or invalid.",
-    );
+  const validation = validateRequest(parseBody(req.body));
+  if (!validation.ok) {
+    return jsonError(req, res, 400, validation.code, validation.message, undefined, "validation");
   }
 
-  const identifier = buildUsageIdentifier(req, validatedBody);
-  const quota = await consumeFollowUpQuota({
-    identifier,
-    entitlement: validatedBody.entitlement,
-  });
-
-  if (!quota.allowed) {
-    return jsonError(
-      res,
-      429,
-      "daily_limit_reached",
-      "The daily AI follow-up limit has been reached for this account.",
-      `Resets at ${quota.resetAt}.`,
-    );
-  }
+  const clientIp = getClientIp(req);
+  const userId = validation.data.userId;
 
   try {
-    const result = await generateReflectionFollowUps(validatedBody);
-    return res.status(200).json({
-      success: true,
-      data: result,
+    const entitlementResolution = await resolveEffectiveEntitlement({
+      clientEntitlement: validation.data.entitlement,
+      userId,
+    });
+
+    const limitResult = await enforceFollowUpLimits({
+      ipIdentifier: clientIp,
+      userIdentifier: userId,
+      entitlement: entitlementResolution.effectiveEntitlement,
+    });
+
+    if (!limitResult.allowed) {
+      return jsonError(
+        req,
+        res,
+        429,
+        limitResult.code,
+        limitResult.code === "daily_limit_reached"
+          ? "The daily AI follow-up limit has been reached."
+          : "Please wait a moment before requesting another AI follow-up.",
+        userId,
+        limitResult.code,
+      );
+    }
+
+    const result = await generateReflectionFollowUps({
+      ...validation.data,
+      entitlement: entitlementResolution.effectiveEntitlement,
+    });
+
+    return sendJson(req, res, {
+      status: 200,
+      userId,
+      reason: entitlementResolution.source,
+      body: {
+        success: true,
+        data: result,
+      },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error.";
-    if (message.includes("OPENAI_API_KEY")) {
-      return jsonError(res, 500, "missing_api_key", "The backend is missing its OpenAI API key.");
+    const safeReason =
+      error instanceof Error && error.message.includes("OPENAI_API_KEY")
+        ? "missing_api_key"
+        : error instanceof Error && error.message.toLowerCase().includes("openai")
+          ? "openai_error"
+          : "internal_error";
+
+    console.error(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        route: ROUTE_PATH,
+        reason: safeReason,
+        fingerprint: buildRequestFingerprint({
+          ip: clientIp,
+          userAgent: getHeader(req, "user-agent"),
+        }),
+        userId: userId ?? null,
+      }),
+    );
+
+    if (safeReason === "missing_api_key") {
+      return jsonError(req, res, 500, "missing_api_key", "The AI service is not configured right now.", userId, safeReason);
     }
 
-    if (message.toLowerCase().includes("openai")) {
-      return jsonError(res, 502, "openai_error", "The AI follow-up could not be generated right now.", message);
+    if (safeReason === "openai_error") {
+      return jsonError(req, res, 502, "openai_error", "The AI follow-up could not be generated right now.", userId, safeReason);
     }
 
-    return jsonError(res, 500, "internal_error", "The AI follow-up could not be generated right now.", message);
+    return jsonError(req, res, 500, "internal_error", "The AI follow-up could not be generated right now.", userId, safeReason);
   }
 }
