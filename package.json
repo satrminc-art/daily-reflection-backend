@@ -9,6 +9,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "typecheck:backend": "npx tsc --noEmit -p backend/tsconfig.json",
     "reflections:tool": "node --no-warnings tools/reflection-library-tool.ts",
     "localization:report": "node --no-warnings tools/localization-coverage-report.ts"
   },

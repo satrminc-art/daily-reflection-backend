@@ -10,6 +10,7 @@ import type {
 
 let configured = false;
 let purchasesModule: any | null | undefined;
+let currentAppUserId: string | null = null;
 
 function loadPurchasesModule() {
   if (purchasesModule !== undefined) {
@@ -53,6 +54,7 @@ export async function configurePurchases(userId?: string): Promise<void> {
   Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
   await Purchases.configure({ apiKey, appUserID: userId });
   configured = true;
+  currentAppUserId = userId ?? null;
 }
 
 export async function initializePurchases(): Promise<boolean> {
@@ -69,6 +71,29 @@ export async function initializePurchases(): Promise<boolean> {
 
 export function isPurchasesConfigured() {
   return configured;
+}
+
+export async function syncPurchasesIdentity(userId?: string | null): Promise<void> {
+  const apiKey = getRevenueCatApiKey();
+  const Purchases = loadPurchasesModule();
+
+  if (!apiKey || !Purchases) {
+    return;
+  }
+
+  if (!configured) {
+    await configurePurchases(userId ?? undefined);
+    return;
+  }
+
+  if (!userId || currentAppUserId === userId) {
+    return;
+  }
+
+  if (typeof Purchases.logIn === "function") {
+    await Purchases.logIn(userId);
+    currentAppUserId = userId;
+  }
 }
 
 export async function fetchCurrentOffering(): Promise<PurchasesOffering | null> {

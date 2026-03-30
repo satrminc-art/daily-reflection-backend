@@ -1,6 +1,8 @@
+import { publicRuntimeConfig } from "@/config/publicRuntime";
+
 export const REVENUECAT_KEYS = {
-  ios: "test_CWkxcfKUkTNfIIjbugIvxkYrXEY",
-  android: "test_CWkxcfKUkTNfIIjbugIvxkYrXEY",
+  ios: publicRuntimeConfig.revenueCatAppleKey,
+  android: publicRuntimeConfig.revenueCatAndroidKey,
 } as const;
 
 export const ENTITLEMENTS = {

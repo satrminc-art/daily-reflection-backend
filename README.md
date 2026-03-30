@@ -2,6 +2,13 @@
 
 A polished mobile MVP for a premium-feeling daily reflection habit app built with Expo, React Native, and TypeScript.
 
+## Repository structure
+
+This root now represents the future `daily-reflection-app` repository.
+
+- App/mobile code lives in the root project structure (`src/`, `ios/`, `android/`, `assets/`, Expo config files).
+- Backend/server code now lives in [`backend/`](/Users/samueltriml/Documents/App-Building/backend) as the future `daily-reflection-backend` repository.
+
 ## Run locally
 
 1. Install a current Node.js LTS release.
@@ -18,6 +25,13 @@ npm run start
 ```
 
 4. Open on iOS, Android, or Expo Go.
+
+## Typecheck
+
+```bash
+npm run typecheck
+npm run typecheck:backend
+```
 
 ## Key files
 
@@ -36,7 +50,4 @@ npm run start
 - Content is seeded locally and uses only `sourceType: "original_reflection"`.
 - The share flow captures the reflection card view as an image via `react-native-view-shot`.
 - Preferences, favorites, archive selections, onboarding state, and notification time are stored locally with AsyncStorage.
-# app-building
-# daily-reflection-backend
-# daily-reflection-backend
-# daily-reflection-backend
+- Backend APIs, RevenueCat webhook handling, server-side repositories, and future AI proxy logic have been isolated into the backend workspace.

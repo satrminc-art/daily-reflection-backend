@@ -10,9 +10,13 @@ import {
   rescheduleDailyNotification,
   scheduleFollowUpRemindersForDay,
 } from "@/services/notificationService";
+import { trackAppEvent } from "@/services/analytics";
+import { getCurrentDayKey, getReflectionForDateKey } from "@/services/dailyReflectionSource";
+import { fetchCurrentProfile, getCurrentSession, signOutUser, upsertCurrentProfile } from "@/services/authService";
+import { mergeLocalSavedReflections, getSavedReflections } from "@/services/savedReflectionsService";
+import { syncPurchasesIdentity } from "@/services/purchases";
 import {
   getFavoriteEntryKey,
-  getReflectionForDate,
   hydrateReflectionById,
   resolveDailyReflectionSelection,
 } from "@/services/reflectionService";
@@ -46,6 +50,9 @@ import {
   AppearanceMode,
 } from "@/types/reflection";
 import { StoredReflectionFollowUp } from "@/types/ai";
+import { AppAuthSession, AuthStatus } from "@/types/auth";
+import { UserProfile } from "@/types/profile";
+import { SavedReflectionUpsertInput } from "@/types/savedReflection";
 import {
   getInitialLanguage,
   isRTLLanguage,
@@ -54,9 +61,11 @@ import {
   sanitizeReflectionLanguageForSubscription,
   sanitizeReflectionLanguagesForSubscription,
 } from "@/localization/languages";
-import { getEffectiveReflectionLanguage, getEffectiveReflectionLanguages, todayISODate } from "@/utils/reflection";
+import { getEffectiveReflectionLanguages, todayISODate } from "@/utils/reflection";
 import { AppColorScheme, setGlobalPaperThemeId } from "@/utils/theme";
-import { getAdjacentISODate, getReflectionActivationTimestamp, getTodayKey } from "@/utils/date";
+import { getAdjacentISODate, getReflectionActivationTimestamp } from "@/utils/date";
+
+type SavedReflectionsSyncState = "idle" | "syncing" | "ready" | "error";
 
 interface AppContextValue {
   isReady: boolean;
@@ -65,6 +74,10 @@ interface AppContextValue {
   todayReady: boolean;
   settingsReady: boolean;
   appState: AppStorageState;
+  authStatus: AuthStatus;
+  authSession: AppAuthSession | null;
+  userProfile: UserProfile | null;
+  savedReflectionsSyncState: SavedReflectionsSyncState;
   colorScheme: AppColorScheme;
   todaysReflection: ReflectionItem | null;
   archive: ReflectionItem[];
@@ -93,6 +106,8 @@ interface AppContextValue {
   markPremiumPromptShown: (context: PremiumPromptContext) => Promise<void>;
   markPremiumPromptDismissed: (context: PremiumPromptContext) => Promise<void>;
   markPremiumPromptOpened: (context: PremiumPromptContext) => Promise<void>;
+  refreshAuthState: () => Promise<void>;
+  signOutCurrentUser: () => Promise<void>;
   toggleFavorite: (reflectionId: string, date?: string) => Promise<void>;
   updateCategories: (categories: ReflectionCategory[]) => Promise<void>;
   updateNotificationTime: (
@@ -162,6 +177,44 @@ function buildNotificationScheduleSignature(
     preferences.soundEnabled ? "sound" : "mute",
     preferences.silentMode ? "silent" : "normal",
   ].join(":");
+}
+
+function getDeviceTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function buildSavedReflectionSyncPayload(state: AppStorageState): SavedReflectionUpsertInput[] {
+  const language = resolveStoredQuoteLanguage(state);
+
+  return state.favorites
+    .map((favoriteKey) => {
+      const [dateKey, reflectionIdCandidate] = favoriteKey.includes(":")
+        ? favoriteKey.split(":")
+        : [state.shownDatesByReflectionId[favoriteKey] ?? "", favoriteKey];
+
+      if (!dateKey || !reflectionIdCandidate) {
+        return null;
+      }
+
+      const reflection = hydrateReflectionById(reflectionIdCandidate, dateKey, state.favorites, language);
+      if (!reflection) {
+        return null;
+      }
+
+      return {
+        userId: "",
+        reflectionId: reflection.id,
+        dateKey: reflection.date,
+        reflectionText: reflection.text,
+        theme: String(reflection.category),
+        tags: [String(reflection.category), String(reflection.tone)],
+      } as SavedReflectionUpsertInput;
+    })
+    .filter((entry): entry is SavedReflectionUpsertInput => entry !== null);
 }
 
 function formatNotificationTime(preference: NotificationPreference): string {
@@ -264,8 +317,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [storageReady, setStorageReady] = useState(false);
   const [todayReady, setTodayReady] = useState(false);
   const [settingsReady, setSettingsReady] = useState(false);
-  const [currentDateKey, setCurrentDateKey] = useState(getTodayKey());
+  const [currentDateKey, setCurrentDateKey] = useState(getCurrentDayKey());
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
+  const [authSession, setAuthSession] = useState<AppAuthSession | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [savedReflectionsSyncState, setSavedReflectionsSyncState] = useState<SavedReflectionsSyncState>("idle");
   const notificationScheduleSignatureRef = useRef<string | null>(null);
+  const savedReflectionsSyncSignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
     try {
@@ -320,7 +378,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       } finally {
         if (isMounted) {
-          setCurrentDateKey(getTodayKey());
+          setCurrentDateKey(getCurrentDayKey());
           setStorageReady(true);
           setSettingsReady(true);
           setAppBootReady(true);
@@ -354,7 +412,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .catch((error) => {
         console.warn("[BOOT] unexpected critical bootstrap failure", error);
         if (isMounted) {
-          setCurrentDateKey(getTodayKey());
+          setCurrentDateKey(getCurrentDayKey());
           setStorageReady(true);
           setSettingsReady(true);
           setAppBootReady(true);
@@ -372,7 +430,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        setCurrentDateKey(getTodayKey());
+        setCurrentDateKey(getCurrentDayKey());
       }
     });
 
@@ -380,7 +438,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setCurrentDateKey(getTodayKey());
+    setCurrentDateKey(getCurrentDayKey());
   }, [appState.hasCompletedOnboarding]);
 
   useEffect(() => {
@@ -400,7 +458,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const quoteLanguage = resolveStoredQuoteLanguage(appState);
 
-    return getReflectionForDate(
+    return getReflectionForDateKey(
       currentDateKey,
       appState.preferences.selectedCategories,
       appState.favorites,
@@ -505,7 +563,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ]);
 
   function lookupReflectionForDate(date: string) {
-    return getReflectionForDate(
+    return getReflectionForDateKey(
       date,
       appState.preferences.selectedCategories,
       appState.favorites,
@@ -704,6 +762,148 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   }, [appState.preferredLanguage]);
 
+  async function refreshAuthState() {
+    try {
+      const session = await getCurrentSession();
+
+      if (!session) {
+        setAuthSession(null);
+        setUserProfile(null);
+        setAuthStatus("guest");
+        setSavedReflectionsSyncState("idle");
+        savedReflectionsSyncSignatureRef.current = null;
+        return;
+      }
+
+      const existingProfile = await fetchCurrentProfile(session);
+      if (!existingProfile) {
+        await upsertCurrentProfile(session, {
+          displayName: appState.userName,
+          appLanguage: appState.preferredLanguage,
+          reflectionLanguage: appState.reflectionLanguage,
+          timezone: getDeviceTimezone(),
+          notificationTime: appState.dailyNotificationTime,
+          subscriptionTier: appState.subscriptionModel,
+        });
+      }
+
+      const hydratedProfile = (await fetchCurrentProfile(session)) ?? existingProfile;
+
+      setAuthSession(session);
+      setUserProfile(hydratedProfile);
+      setAuthStatus("authenticated");
+    } catch (error) {
+      console.warn("Failed to hydrate auth state", error);
+      setAuthSession(null);
+      setUserProfile(null);
+      setAuthStatus("guest");
+      setSavedReflectionsSyncState("error");
+      savedReflectionsSyncSignatureRef.current = null;
+    }
+  }
+
+  async function signOutCurrentUser() {
+    await signOutUser();
+    setAuthSession(null);
+    setUserProfile(null);
+    setAuthStatus("guest");
+    setSavedReflectionsSyncState("idle");
+    savedReflectionsSyncSignatureRef.current = null;
+  }
+
+  useEffect(() => {
+    if (!storageReady) {
+      return;
+    }
+
+    void refreshAuthState();
+  }, [storageReady]);
+
+  useEffect(() => {
+    const revenueCatIdentity = authSession?.user.id ?? appState.localUserId;
+    syncPurchasesIdentity(revenueCatIdentity).catch((error) => {
+      console.warn("Failed to sync RevenueCat identity", error);
+    });
+  }, [authSession?.user.id, appState.localUserId]);
+
+  useEffect(() => {
+    if (authStatus !== "authenticated" || !authSession) {
+      return;
+    }
+
+    upsertCurrentProfile(authSession, {
+      displayName: appState.userName,
+      appLanguage: appState.preferredLanguage,
+      reflectionLanguage: appState.reflectionLanguage,
+      timezone: getDeviceTimezone(),
+      notificationTime: appState.dailyNotificationTime,
+      subscriptionTier: appState.subscriptionModel,
+    }).catch((error) => {
+      console.warn("Failed to sync user profile", error);
+    });
+  }, [
+    appState.dailyNotificationTime,
+    appState.preferredLanguage,
+    appState.reflectionLanguage,
+    appState.subscriptionModel,
+    appState.userName,
+    authSession,
+    authStatus,
+  ]);
+
+  useEffect(() => {
+    if (authStatus !== "authenticated" || !authSession) {
+      return;
+    }
+
+    const localPayload = buildSavedReflectionSyncPayload(appState).map((entry) => ({
+      ...entry,
+      userId: authSession.user.id,
+    }));
+    const signature = JSON.stringify({
+      userId: authSession.user.id,
+      favorites: localPayload.map((entry) => `${entry.dateKey}:${entry.reflectionId}`).sort(),
+    });
+
+    if (savedReflectionsSyncSignatureRef.current === signature) {
+      return;
+    }
+
+    setSavedReflectionsSyncState("syncing");
+
+    mergeLocalSavedReflections(authSession, localPayload)
+      .then(() => getSavedReflections(authSession))
+      .then((remoteSaved) => {
+        const syncedFavorites = remoteSaved
+          .map((entry) => `${entry.dateKey}:${entry.reflectionId}`)
+          .sort((a, b) => (a < b ? 1 : -1));
+        savedReflectionsSyncSignatureRef.current = JSON.stringify({
+          userId: authSession.user.id,
+          favorites: syncedFavorites,
+        });
+        setSavedReflectionsSyncState("ready");
+        setAppState((previous) => ({
+          ...previous,
+          favorites: syncedFavorites,
+        }));
+      })
+      .catch((error) => {
+        console.warn("Failed to sync saved reflections", error);
+        setSavedReflectionsSyncState("error");
+      });
+  }, [
+    appState.dailySelections,
+    appState.favorites,
+    appState.preferredLanguage,
+    appState.reflectionLanguage,
+    appState.reflectionLanguageMode,
+    appState.reflectionLanguages,
+    appState.shownDatesByReflectionId,
+    appState.subscriptionModel,
+    authSession,
+    authStatus,
+  ]);
+
   useEffect(() => {
     if (!storageReady || !appState.hasCompletedOnboarding || !appState.preferredLanguage) {
       return;
@@ -786,6 +986,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const selectedReflectionId = selection.entry.id;
 
     await persistLanguageSelection(nextLanguage);
+    trackAppEvent("onboarding_completed", {
+      language: nextLanguage,
+      selectedPreferencesCount: payload.userPreferences.length,
+      hasName: Boolean(payload.userName?.trim()),
+    });
 
     setAppState((previous) => ({
       ...previous,
@@ -832,6 +1037,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function markDailyReflectionPreviewSeen() {
+    trackAppEvent("reflection_preview_seen");
     setAppState((previous) => ({
       ...previous,
       hasSeenDailyReflectionPreview: true,
@@ -1593,6 +1799,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         todayReady,
         settingsReady,
         appState,
+        authStatus,
+        authSession,
+        userProfile,
+        savedReflectionsSyncState,
         colorScheme: resolveColorScheme(appState.preferences.theme, systemScheme),
         todaysReflection,
         archive,
@@ -1615,6 +1825,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         markPremiumPromptShown,
         markPremiumPromptDismissed,
         markPremiumPromptOpened,
+        refreshAuthState,
+        signOutCurrentUser,
         markActiveReflectionViewed,
         deferActiveReflectionForToday,
         toggleFavorite,

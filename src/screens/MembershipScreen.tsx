@@ -10,6 +10,7 @@ import { useMembership } from "@/hooks/useMembership";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useTypography } from "@/hooks/useTypography";
 import { RootStackParamList } from "@/navigation/types";
+import { trackAppEvent } from "@/services/analytics";
 import { findLifelongPackage, findPremiumPackage, getCurrentOffering } from "@/services/purchases";
 import { PurchaseTarget } from "@/types/membership";
 import type { PurchasesPackage } from "@/types/purchases";
@@ -70,6 +71,13 @@ export function MembershipScreen({ navigation }: Props) {
   const premiumPrice = yearlyPremiumPackage?.product.priceString ?? premiumPackage?.product.priceString ?? null;
   const lifelongPrice = lifelongPackage?.product.priceString ?? null;
 
+  useEffect(() => {
+    trackAppEvent("paywall_seen", {
+      launchOffer: isLaunchOffer,
+      currentPlan,
+    });
+  }, [currentPlan, isLaunchOffer]);
+
   const premiumBenefits = [
     t("membership.benefitSavePages"),
     t("membership.benefitCollections"),
@@ -116,7 +124,9 @@ export function MembershipScreen({ navigation }: Props) {
   async function handlePlanSelection(targetPlan: PurchaseTarget) {
     try {
       setPurchaseLoading(targetPlan);
+      trackAppEvent("purchase_started", { targetPlan });
       await membership.selectPlan(targetPlan);
+      trackAppEvent("purchase_completed", { targetPlan });
       Alert.alert(
         t("membership.purchaseSuccessTitle"),
         targetPlan === "premium"
@@ -144,6 +154,7 @@ export function MembershipScreen({ navigation }: Props) {
   }
 
   async function handleContinueFree() {
+    trackAppEvent("continue_free", { launchOffer: isLaunchOffer });
     if (isLaunchOffer) {
       await finishLaunchFlow();
       return;

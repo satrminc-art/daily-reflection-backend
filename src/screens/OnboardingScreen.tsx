@@ -19,6 +19,7 @@ import {
   triggerSoftConfirmationHaptic,
   triggerSoftSelectionHaptic,
 } from "@/services/hapticsService";
+import { trackAppEvent } from "@/services/analytics";
 import { requestNotificationPermission } from "@/services/notificationService";
 import {
   filterLanguageOptions,
@@ -436,12 +437,16 @@ function NotificationsScreen({ navigation }: StepProps<"Notifications">) {
     triggerSoftSelectionHaptic();
 
     if (!allow) {
+      trackAppEvent("notification_permission_denied", { source: "onboarding_pre_permission" });
       setNotificationDecision("skipped");
       navigation.navigate("StartReady");
       return;
     }
 
     const granted = await requestNotificationPermission();
+    trackAppEvent(granted ? "notification_permission_allowed" : "notification_permission_denied", {
+      source: "onboarding_os_prompt",
+    });
     setNotificationDecision(granted ? "granted" : "denied");
     navigation.navigate("StartReady");
   }

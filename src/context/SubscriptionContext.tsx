@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { __DEV_OVERRIDE_ENABLED__ } from "@/config/devFlags";
 import { useAppContext } from "@/context/AppContext";
+import { fetchSubscriptionStatus } from "@/services/api/subscription";
 import {
   deriveMembershipTier,
   fetchCurrentOffering,
@@ -23,6 +24,7 @@ import {
   saveDevSubscriptionOverride,
 } from "@/services/subscriptionOverride";
 import { getAppStrings } from "@/localization/strings";
+import { RemoteSubscriptionStatus } from "@/types/subscription";
 import type { CustomerInfo, PurchasesOffering, PurchasesPackage } from "@/types/purchases";
 import type { SubscriptionModel } from "@/types/reflection";
 import {
@@ -71,7 +73,7 @@ function hasDaysSince(timestamp: string | null, days: number) {
 }
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { appState, updateSubscriptionModel, markFreemiumUpgradeNotificationScheduled } = useAppContext();
+  const { appState, authSession, updateSubscriptionModel, markFreemiumUpgradeNotificationScheduled } = useAppContext();
   const [configured, setConfigured] = useState(false);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
@@ -80,6 +82,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [subscriptionReady, setSubscriptionReady] = useState(false);
   const [realTier, setRealTier] = useState<MembershipTier | null>(null);
   const [devOverridePlan, setDevOverridePlanState] = useState<SubscriptionModel | null>(null);
+  const [remoteSubscriptionStatus, setRemoteSubscriptionStatus] = useState<RemoteSubscriptionStatus | null>(null);
 
   useEffect(() => {
     if (!__DEV_OVERRIDE_ENABLED__) {
@@ -134,6 +137,21 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     });
   }, [appState.preferredLanguage]);
 
+  useEffect(() => {
+    if (!authSession?.accessToken) {
+      setRemoteSubscriptionStatus(null);
+      return;
+    }
+
+    fetchSubscriptionStatus(authSession.accessToken)
+      .then((status) => {
+        setRemoteSubscriptionStatus(status);
+      })
+      .catch((error) => {
+        console.warn("[SUBSCRIPTION] failed to hydrate backend subscription status", error);
+      });
+  }, [authSession?.accessToken]);
+
   async function purchasePackage(pkg: PurchasesPackage) {
     setLoading(true);
     setError(null);
@@ -168,7 +186,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
   }
 
-  const actualMembershipTier = realTier ?? (customerInfo ? deriveMembershipTier(customerInfo) : "freemium");
+  const actualMembershipTier =
+    remoteSubscriptionStatus?.tier === "Lifelong"
+      ? "lifelong"
+      : remoteSubscriptionStatus?.tier === "Premium"
+        ? "premium"
+        : realTier ?? (customerInfo ? deriveMembershipTier(customerInfo) : "freemium");
   const actualIsPremium = actualMembershipTier !== "freemium" || hasActivePremiumEntitlement(customerInfo?.entitlements);
   const packageSet = useMemo(() => getPrimaryOffering(offering), [offering]);
   const actualPlanLabel =
