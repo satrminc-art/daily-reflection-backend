@@ -3,32 +3,45 @@ import type {
   ReflectionFollowUpData,
   ReflectionFollowUpRequest,
 } from "../src/types/ai";
+import { getServerEnv } from "../src/config/serverEnv";
 
 const DEFAULT_MODEL = "gpt-5.4-mini";
 
 function buildSystemPrompt() {
-  return [
-    "You write short follow-up reflection prompts for a quiet journaling app.",
-    "Return 1 or 2 brief prompts only.",
-    "Tone: calm, minimal, thoughtful, non-therapeutic, non-judgmental, not pushy.",
-    "Do not give advice, interpretation, reassurance, or analysis.",
-    "Do not mention therapy, healing, diagnosis, or mental health treatment.",
-    "Each prompt should feel elegant, reflective, and easy to continue writing from.",
-    "Do not include numbering or commentary.",
-  ].join(" ");
+  return "Du formulierst ruhige, einfühlsame Reflexionsfragen für persönliche Notizen.";
 }
 
 function buildUserPrompt(input: ReflectionFollowUpRequest) {
+  const note = input.userNote.trim();
+
   return [
-    `App language: ${input.appLanguage}`,
-    `Reflection language: ${input.reflectionLanguage}`,
-    input.category ? `Category: ${input.category}` : null,
-    `Reflection: ${input.reflectionText.trim()}`,
-    `User note: ${input.userNote.trim()}`,
-    `Write the follow-up prompts in this language: ${input.appLanguage}.`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+    "Du bist eine ruhige, einfühlsame Stimme für persönliche Reflexion.",
+    "",
+    "Ein Mensch hat gerade eine kurze Notiz geschrieben.",
+    "",
+    "Deine Aufgabe:",
+    "Formuliere genau EINE vertiefende Reflexionsfrage.",
+    "",
+    "WICHTIG:",
+    "- Schreibe auf Deutsch",
+    "- Sprich den Nutzer direkt an (du)",
+    "- Beziehe dich subtil auf die Notiz",
+    "- Verwende eine ruhige, sanfte, fast poetische Sprache",
+    "- Keine Floskeln, kein Coaching-Ton",
+    "- Keine Erklärungen",
+    "- Keine Aufzählungen",
+    "- Kein Hinweis auf KI",
+    "",
+    "Die Frage soll:",
+    "- zum Innehalten einladen",
+    "- leicht emotional berühren",
+    "- nicht technisch oder analytisch wirken",
+    "",
+    "Notiz:",
+    `"${note}"`,
+    "",
+    "Antwort:",
+  ].join("\n");
 }
 
 function normalizePrompts(value: unknown) {
@@ -113,7 +126,8 @@ export async function generateReflectionFollowUps(
   input: ReflectionFollowUpRequest,
 ): Promise<ReflectionFollowUpData> {
   // Server-only: never import this module into Expo client code.
-  const apiKey = process.env.OPENAI_API_KEY;
+  const env = getServerEnv();
+  const apiKey = env.openAiApiKey;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is missing.");
   }
@@ -128,6 +142,7 @@ export async function generateReflectionFollowUps(
         route: "/api/reflection/follow-up",
         event: "openai_follow_up_started",
         model,
+        apiKeyConfigured: Boolean(apiKey),
         noteLength: input.userNote.trim().length,
       }),
     );

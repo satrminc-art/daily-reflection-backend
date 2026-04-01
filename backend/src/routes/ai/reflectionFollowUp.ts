@@ -2,6 +2,7 @@ import { resolveEffectiveEntitlement } from "../../../lib/entitlements";
 import { enforceFollowUpLimits } from "../../../lib/limits";
 import { logApiEvent, buildRequestFingerprint } from "../../../lib/logging";
 import { generateReflectionFollowUps } from "../../../lib/openai";
+import { followUpError, followUpSuccess } from "../../lib/followUpResponses";
 import type {
   ReflectionFollowUpErrorCode,
   ReflectionFollowUpRequest,
@@ -13,7 +14,7 @@ const ROUTE_PATH = "/api/reflection/follow-up";
 const MAX_BODY_BYTES = 8_192;
 const MAX_REFLECTION_ID_LENGTH = 120;
 const MAX_REFLECTION_TEXT_LENGTH = 600;
-const MAX_USER_NOTE_LENGTH = 1_200;
+const MAX_USER_NOTE_LENGTH = 800;
 const MAX_CATEGORY_LENGTH = 80;
 const MAX_LANGUAGE_LENGTH = 24;
 const MAX_USER_ID_LENGTH = 120;
@@ -40,8 +41,8 @@ type RouteResponse = {
   json: (body: ReflectionFollowUpResponse) => void;
 };
 
-type ValidationResult =
-  | { ok: true; data: ReflectionFollowUpRequest }
+type ValidationResult<T> =
+  | { ok: true; data: T }
   | { ok: false; code: ReflectionFollowUpErrorCode; message: string };
 
 function getHeader(req: RouteRequest, headerName: string) {
@@ -60,14 +61,10 @@ function getClientIp(req: RouteRequest) {
   );
 }
 
-function getSafeNotePreview(note: string) {
-  return note.replace(/\s+/g, " ").slice(0, 80);
-}
-
 function sendJson(
   req: RouteRequest,
   res: RouteResponse,
-  args: { status: number; body: ReflectionFollowUpResponse; userId?: string; reason?: string },
+  args: { status: number; body: ReflectionFollowUpResponse; userId?: string; reason?: string; durationMs?: number; noteLength?: number },
 ) {
   const fingerprint = buildRequestFingerprint({
     ip: getClientIp(req),
@@ -76,10 +73,13 @@ function sendJson(
 
   logApiEvent({
     route: ROUTE_PATH,
+    method: req.method,
     status: args.status,
     fingerprint,
     userId: args.userId,
     reason: args.reason,
+    durationMs: args.durationMs,
+    noteLength: args.noteLength,
   });
 
   return res.status(args.status).json(args.body);
@@ -90,18 +90,19 @@ function jsonError(
   res: RouteResponse,
   status: number,
   code: ReflectionFollowUpErrorCode,
-  message: string,
+  _message: string,
   userId?: string,
   reason?: string,
+  durationMs?: number,
+  noteLength?: number,
 ) {
   return sendJson(req, res, {
     status,
     userId,
     reason,
-    body: {
-      success: false,
-      error: code,
-    },
+    durationMs,
+    noteLength,
+    body: followUpError(code),
   });
 }
 
@@ -162,7 +163,7 @@ function isEntitlement(value: unknown): value is MembershipTier {
   return value === "freemium" || value === "premium" || value === "lifelong";
 }
 
-function validateRequest(body: Record<string, unknown> | null): ValidationResult {
+function validateRequest(body: Record<string, unknown> | null): ValidationResult<ReflectionFollowUpRequest> {
   if (!body) {
     return {
       ok: false,
@@ -190,16 +191,31 @@ function validateRequest(body: Record<string, unknown> | null): ValidationResult
 
   const reflectionId = trimString(body.reflectionId, MAX_REFLECTION_ID_LENGTH);
   const reflectionText = trimString(body.reflectionText, MAX_REFLECTION_TEXT_LENGTH);
-  const userNote = trimString(body.userNote, MAX_USER_NOTE_LENGTH);
+  const rawUserNote = typeof body.userNote === "string" ? body.userNote.trim() : null;
   const appLanguage = trimString(body.appLanguage, MAX_LANGUAGE_LENGTH);
   const reflectionLanguage = trimString(body.reflectionLanguage, MAX_LANGUAGE_LENGTH);
   const categoryResult = validateOptionalString(body.category, MAX_CATEGORY_LENGTH);
   const userIdResult = validateOptionalString(body.userId, MAX_USER_ID_LENGTH);
 
+  if (!rawUserNote) {
+    return {
+      ok: false,
+      code: "note_required",
+      message: "The follow-up request note is missing.",
+    };
+  }
+
+  if (rawUserNote.length > MAX_USER_NOTE_LENGTH) {
+    return {
+      ok: false,
+      code: "note_too_long",
+      message: "The follow-up request note is too long.",
+    };
+  }
+
   if (
     !reflectionId ||
     !reflectionText ||
-    !userNote ||
     !appLanguage ||
     !reflectionLanguage ||
     !categoryResult.ok ||
@@ -213,12 +229,20 @@ function validateRequest(body: Record<string, unknown> | null): ValidationResult
     };
   }
 
+  if (rawUserNote.length < 2) {
+    return {
+      ok: false,
+      code: "note_required",
+      message: "The follow-up request note is too short.",
+    };
+  }
+
   return {
     ok: true,
     data: {
       reflectionId,
       reflectionText,
-      userNote,
+      userNote: rawUserNote,
       category: categoryResult.value,
       appLanguage,
       reflectionLanguage,
@@ -229,29 +253,36 @@ function validateRequest(body: Record<string, unknown> | null): ValidationResult
 }
 
 export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteResponse) {
+  const startedAt = Date.now();
   res.setHeader?.("Allow", "POST");
 
   if (req.method !== "POST") {
-    return jsonError(req, res, 405, "method_not_allowed", "Only POST is supported.", undefined, "method");
+    return jsonError(req, res, 405, "method_not_allowed", "Only POST is supported.", undefined, "method", Date.now() - startedAt);
   }
 
   const validation = validateRequest(parseBody(req.body));
   if (!validation.ok) {
-    return jsonError(req, res, 400, validation.code, validation.message, undefined, "validation");
+    return sendJson(req, res, {
+      status: 400,
+      reason: "validation",
+      durationMs: Date.now() - startedAt,
+      body: followUpError(validation.code),
+    });
   }
 
   const clientIp = getClientIp(req);
   const userId = validation.data.userId;
+  const noteLength = validation.data.userNote.length;
 
   console.info(
     JSON.stringify({
       timestamp: new Date().toISOString(),
       route: ROUTE_PATH,
       event: "follow_up_request_received",
+      method: req.method ?? null,
       apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
       reflectionId: validation.data.reflectionId,
-      noteLength: validation.data.userNote.length,
-      notePreview: getSafeNotePreview(validation.data.userNote),
+      noteLength,
       appLanguage: validation.data.appLanguage,
       reflectionLanguage: validation.data.reflectionLanguage,
       fingerprint: buildRequestFingerprint({
@@ -285,6 +316,8 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
           : "Please wait a moment before requesting another AI follow-up.",
         userId,
         limitResult.code,
+        Date.now() - startedAt,
+        noteLength,
       );
     }
 
@@ -293,14 +326,27 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
       entitlement: entitlementResolution.effectiveEntitlement,
     });
 
+    const normalizedText = result.text.trim();
+    if (!normalizedText) {
+      return sendJson(req, res, {
+        status: 502,
+        userId,
+        reason: "empty_response",
+        durationMs: Date.now() - startedAt,
+        noteLength,
+        body: followUpError("empty_response"),
+      });
+    }
+
     console.info(
       JSON.stringify({
         timestamp: new Date().toISOString(),
         route: ROUTE_PATH,
         event: "follow_up_response_ready",
-        textLength: result.text.length,
+        textLength: normalizedText.length,
         model: result.model,
         userId: userId ?? null,
+        durationMs: Date.now() - startedAt,
       }),
     );
 
@@ -308,10 +354,9 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
       status: 200,
       userId,
       reason: entitlementResolution.source,
-      body: {
-        success: true,
-        text: result.text,
-      },
+      durationMs: Date.now() - startedAt,
+      noteLength,
+      body: followUpSuccess(normalizedText),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown follow-up error.";
@@ -328,6 +373,8 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
         route: ROUTE_PATH,
         reason: safeReason,
         message,
+        method: req.method ?? null,
+        durationMs: Date.now() - startedAt,
         fingerprint: buildRequestFingerprint({
           ip: clientIp,
           userAgent: getHeader(req, "user-agent"),
@@ -337,14 +384,35 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
     );
 
     if (safeReason === "missing_api_key") {
-      return jsonError(req, res, 500, "missing_api_key", "The AI service is not configured right now.", userId, safeReason);
+      return sendJson(req, res, {
+        status: 500,
+        userId,
+        reason: safeReason,
+        durationMs: Date.now() - startedAt,
+        noteLength,
+        body: followUpError("missing_api_key"),
+      });
     }
 
     if (safeReason === "openai_error") {
-      return jsonError(req, res, 502, "openai_error", "The AI follow-up could not be generated right now.", userId, safeReason);
+      return sendJson(req, res, {
+        status: 502,
+        userId,
+        reason: safeReason,
+        durationMs: Date.now() - startedAt,
+        noteLength,
+        body: followUpError("openai_error"),
+      });
     }
 
-    return jsonError(req, res, 500, "internal_error", "The AI follow-up could not be generated right now.", userId, safeReason);
+    return sendJson(req, res, {
+      status: 500,
+      userId,
+      reason: safeReason,
+      durationMs: Date.now() - startedAt,
+      noteLength,
+      body: followUpError("internal_error"),
+    });
   }
 }
 

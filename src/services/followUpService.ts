@@ -10,6 +10,8 @@ const FOLLOW_UP_REQUEST_TIMEOUT_MS = 20_000;
 const FOLLOW_UP_ERROR_CODES: ReflectionFollowUpErrorCode[] = [
   "method_not_allowed",
   "invalid_request",
+  "note_required",
+  "note_too_long",
   "daily_limit_reached",
   "rate_limited",
   "missing_api_key",

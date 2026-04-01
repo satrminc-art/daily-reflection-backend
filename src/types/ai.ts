@@ -25,6 +25,8 @@ export interface ReflectionFollowUpSuccessResponse {
 export type ReflectionFollowUpErrorCode =
   | "method_not_allowed"
   | "invalid_request"
+  | "note_required"
+  | "note_too_long"
   | "daily_limit_reached"
   | "rate_limited"
   | "missing_api_key"

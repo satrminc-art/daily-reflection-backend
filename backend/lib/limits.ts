@@ -8,6 +8,8 @@ const DAILY_LIMITS: Record<MembershipTier, number> = {
 
 const REQUEST_COOLDOWN_MS = 12_000;
 const IP_DAILY_LIMIT = 40;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 6;
 
 type DailyUsageEntry = {
   count: number;
@@ -18,8 +20,15 @@ type CooldownEntry = {
   expiresAt: number;
 };
 
+type WindowEntry = {
+  count: number;
+  windowStartedAt: number;
+  expiresAt: number;
+};
+
 const dailyUsageStore = new Map<string, DailyUsageEntry>();
 const cooldownStore = new Map<string, CooldownEntry>();
+const rateLimitWindowStore = new Map<string, WindowEntry>();
 
 function getUtcDateKey(now: Date) {
   return now.toISOString().slice(0, 10);
@@ -39,6 +48,12 @@ function pruneExpiredEntries(nowMs: number) {
   for (const [key, entry] of cooldownStore.entries()) {
     if (entry.expiresAt <= nowMs) {
       cooldownStore.delete(key);
+    }
+  }
+
+  for (const [key, entry] of rateLimitWindowStore.entries()) {
+    if (entry.expiresAt <= nowMs) {
+      rateLimitWindowStore.delete(key);
     }
   }
 }
@@ -73,6 +88,33 @@ export async function enforceFollowUpLimits(args: {
   const dateKey = getUtcDateKey(now);
   const dateExpiry = getExpiryForDateKey(dateKey);
   const identifiers = [args.ipIdentifier, args.userIdentifier].filter(Boolean) as string[];
+
+  for (const identifier of identifiers) {
+    const windowKey = `window:${identifier}`;
+    const existingWindow = rateLimitWindowStore.get(windowKey);
+
+    if (existingWindow && existingWindow.expiresAt > nowMs) {
+      if (existingWindow.count >= RATE_LIMIT_MAX_REQUESTS) {
+        return {
+          allowed: false as const,
+          code: "rate_limited" as const,
+          retryAfterMs: existingWindow.expiresAt - nowMs,
+          resetAt: new Date(existingWindow.expiresAt).toISOString(),
+        };
+      }
+
+      rateLimitWindowStore.set(windowKey, {
+        ...existingWindow,
+        count: existingWindow.count + 1,
+      });
+    } else {
+      rateLimitWindowStore.set(windowKey, {
+        count: 1,
+        windowStartedAt: nowMs,
+        expiresAt: nowMs + RATE_LIMIT_WINDOW_MS,
+      });
+    }
+  }
 
   let maxCooldownRemaining = 0;
   for (const identifier of identifiers) {

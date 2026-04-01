@@ -17,19 +17,25 @@ export function buildRequestFingerprint(args: {
 
 export function logApiEvent(event: {
   route: string;
+  method?: string;
   status: number;
   fingerprint: string;
   userId?: string;
   reason?: string;
+  durationMs?: number;
+  noteLength?: number;
 }) {
   console.info(
     JSON.stringify({
       timestamp: new Date().toISOString(),
       route: event.route,
+      method: event.method ?? null,
       status: event.status,
       fingerprint: event.fingerprint,
       userId: event.userId ?? null,
       reason: event.reason ?? null,
+      durationMs: event.durationMs ?? null,
+      noteLength: event.noteLength ?? null,
     }),
   );
 }
