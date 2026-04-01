@@ -45,8 +45,6 @@ type ValidationResult<T> =
   | { ok: true; data: T }
   | { ok: false; code: ReflectionFollowUpErrorCode; message: string };
 
-type ValidationError = Extract<ValidationResult<ReflectionFollowUpRequest>, { ok: false }>;
-
 function getHeader(req: RouteRequest, headerName: string) {
   const raw = req.headers[headerName];
   if (Array.isArray(raw)) {
@@ -104,7 +102,7 @@ function jsonError(
     reason,
     durationMs,
     noteLength,
-    body: followUpError(code),
+    body: followUpError(code, _message),
   });
 }
 
@@ -264,9 +262,10 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
 
   const validation = validateRequest(parseBody(req.body));
   if (validation.ok) {
+    const validated = validation.data;
     const clientIp = getClientIp(req);
-    const userId = validation.data.userId;
-    const noteLength = validation.data.userNote.length;
+    const userId = validated.userId;
+    const noteLength = validated.userNote.length;
 
     console.info(
       JSON.stringify({
@@ -275,10 +274,10 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
         event: "follow_up_request_received",
         method: req.method ?? null,
         apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
-        reflectionId: validation.data.reflectionId,
+        reflectionId: validated.reflectionId,
         noteLength,
-        appLanguage: validation.data.appLanguage,
-        reflectionLanguage: validation.data.reflectionLanguage,
+        appLanguage: validated.appLanguage,
+        reflectionLanguage: validated.reflectionLanguage,
         fingerprint: buildRequestFingerprint({
           ip: clientIp,
           userAgent: getHeader(req, "user-agent"),
@@ -289,7 +288,7 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
 
     try {
       const entitlementResolution = await resolveEffectiveEntitlement({
-        clientEntitlement: validation.data.entitlement,
+        clientEntitlement: validated.entitlement,
         userId,
       });
 
@@ -316,7 +315,7 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
       }
 
       const result = await generateReflectionFollowUps({
-        ...validation.data,
+        ...validated,
         entitlement: entitlementResolution.effectiveEntitlement,
       });
 
@@ -409,13 +408,11 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
       });
     }
   } else {
-    const validationError: ValidationError = validation;
-
     return sendJson(req, res, {
       status: 400,
       reason: "validation",
       durationMs: Date.now() - startedAt,
-      body: followUpError(validationError.code),
+      body: followUpError(validation.code, validation.message),
     });
   }
 }

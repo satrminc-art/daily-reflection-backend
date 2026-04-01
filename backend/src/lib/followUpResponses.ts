@@ -10,9 +10,13 @@ export function followUpSuccess(text: string): ReflectionFollowUpResponse {
   };
 }
 
-export function followUpError(code: ReflectionFollowUpErrorCode): ReflectionFollowUpResponse {
+export function followUpError(
+  code: ReflectionFollowUpErrorCode,
+  message?: string,
+): ReflectionFollowUpResponse {
   return {
     success: false,
     error: code,
+    message,
   };
 }
