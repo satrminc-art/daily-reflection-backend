@@ -12,14 +12,14 @@ export interface ReflectionFollowUpRequest {
 }
 
 export interface ReflectionFollowUpData {
-  prompts: string[];
+  text: string;
   model: string;
   generatedAt: string;
 }
 
 export interface ReflectionFollowUpSuccessResponse {
   success: true;
-  data: ReflectionFollowUpData;
+  text: string;
 }
 
 export type ReflectionFollowUpErrorCode =
@@ -29,15 +29,12 @@ export type ReflectionFollowUpErrorCode =
   | "rate_limited"
   | "missing_api_key"
   | "openai_error"
+  | "empty_response"
   | "internal_error";
 
 export interface ReflectionFollowUpErrorResponse {
   success: false;
-  error: {
-    code: ReflectionFollowUpErrorCode;
-    message: string;
-    details?: string;
-  };
+  error: string;
 }
 
 export type ReflectionFollowUpResponse = ReflectionFollowUpSuccessResponse | ReflectionFollowUpErrorResponse;

@@ -597,17 +597,14 @@ function sanitizeReflectionFollowUps(
           typeof value.date !== "string" ||
           typeof value.model !== "string" ||
           typeof value.generatedAt !== "string" ||
-          !Array.isArray(value.prompts)
+          typeof value.text !== "string"
         ) {
           return null;
         }
 
-        const prompts = value.prompts
-          .map((prompt) => (typeof prompt === "string" ? prompt.trim() : ""))
-          .filter(Boolean)
-          .slice(0, 2);
+        const text = value.text.trim();
 
-        if (!key.trim() || !value.reflectionId.trim() || !value.date.trim() || !prompts.length) {
+        if (!key.trim() || !value.reflectionId.trim() || !value.date.trim() || !text) {
           return null;
         }
 
@@ -616,7 +613,7 @@ function sanitizeReflectionFollowUps(
           {
             reflectionId: value.reflectionId.trim(),
             date: value.date.trim(),
-            prompts,
+            text,
             model: value.model.trim(),
             generatedAt: value.generatedAt.trim(),
           } satisfies StoredReflectionFollowUp,

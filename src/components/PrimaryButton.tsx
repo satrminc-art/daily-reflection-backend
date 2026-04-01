@@ -46,7 +46,7 @@ export function PrimaryButton({ label, onPress, variant = "primary", disabled = 
         variantStyle,
         style,
         disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
+        pressed && !disabled && [styles.pressed, variant !== "ghost" && styles.pressedElevated],
       ]}
     >
       <Text style={[styles.label, { color: textColor, fontFamily: typography.action }]}>{label}</Text>
@@ -56,26 +56,31 @@ export function PrimaryButton({ label, onPress, variant = "primary", disabled = 
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    minHeight: 54,
+    minHeight: 56,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 20,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.07,
-    shadowRadius: 18,
+    paddingHorizontal: 22,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
     elevation: 2,
   },
   label: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "700",
-    letterSpacing: 0.2,
+    letterSpacing: 0.15,
   },
   disabled: {
     opacity: 0.45,
   },
   pressed: {
-    transform: [{ scale: 0.98 }],
+    transform: [{ scale: 0.982 }, { translateY: 1 }],
+    opacity: 0.96,
+  },
+  pressedElevated: {
+    shadowOpacity: 0.03,
+    elevation: 1,
   },
 });

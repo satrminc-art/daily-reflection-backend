@@ -31,7 +31,7 @@ export function ScreenContainer({ children, scroll = false, contentContainerStyl
     <ScrollView
       contentContainerStyle={[
         styles.scrollContent,
-        { paddingBottom: Math.max(40, insets.bottom + 20) },
+        { paddingBottom: Math.max(72, insets.bottom + 36) },
         contentContainerStyle,
       ]}
       showsVerticalScrollIndicator={false}
@@ -68,7 +68,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 28,
     flexGrow: 1,
   },
   overlay: {

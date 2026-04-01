@@ -14,6 +14,7 @@ export type TranslationKey =
   | "tabs.favorites"
   | "tabs.settings"
   | "common.continue"
+  | "common.back"
   | "common.continueWithoutName"
   | "common.notNow"
   | "common.allowNotifications"
@@ -22,8 +23,81 @@ export type TranslationKey =
   | "common.cancel"
   | "common.reset"
   | "common.refresh"
+  | "brand.quietPlace"
+  | "onboarding.welcome.title"
+  | "onboarding.welcome.subtitle"
+  | "onboarding.welcome.cta"
+  | "onboarding.entry.title"
+  | "onboarding.entry.text"
+  | "onboarding.entry.cta"
+  | "onboarding.problem.title"
+  | "onboarding.problem.text"
+  | "onboarding.problem.cta"
+  | "onboarding.deeperTruth.title"
+  | "onboarding.deeperTruth.text"
+  | "onboarding.deeperTruth.cta"
+  | "onboarding.solution.title"
+  | "onboarding.solution.text"
+  | "onboarding.solution.cta"
+  | "onboarding.language.title"
+  | "onboarding.language.subtitle"
+  | "onboarding.nameInput.title"
+  | "onboarding.nameInput.subtitle"
+  | "onboarding.nameInput.placeholder"
+  | "onboarding.nameInput.cta"
+  | "onboarding.nameConfirm.title"
+  | "onboarding.nameConfirm.titleFallback"
+  | "onboarding.nameConfirm.subtitle"
+  | "onboarding.nameConfirm.cta"
+  | "onboarding.intent.title"
+  | "onboarding.intent.subtitle"
+  | "onboarding.intent.helper"
+  | "onboarding.moment.title"
+  | "onboarding.moment.subtitle"
+  | "onboarding.time.title"
+  | "onboarding.time.subtitle"
+  | "onboarding.notification.title"
+  | "onboarding.notification.text"
+  | "onboarding.notification.allow"
+  | "onboarding.notification.skip"
+  | "onboarding.preparing.title"
+  | "onboarding.preparing.subtitle"
+  | "onboarding.preparing.text"
+  | "onboarding.preparing.statusShape"
+  | "onboarding.preparing.statusQuietPlace"
+  | "onboarding.preparing.statusAligned"
+  | "onboarding.preparing.statusFirstPage"
+  | "onboarding.preparing.statusRhythm"
+  | "onboarding.preparing.statusPage"
+  | "onboarding.preparing.statusThought"
+  | "onboarding.preparing.statusAlmost"
+  | "onboarding.firstPageIntro.title"
+  | "onboarding.firstPageIntro.subtitle"
+  | "onboarding.firstPageIntro.cta"
+  | "onboarding.paywall.title"
+  | "onboarding.paywall.subtitle"
+  | "onboarding.paywall.premiumTitle"
+  | "onboarding.paywall.premiumSubtitle"
+  | "onboarding.paywall.features.keep"
+  | "onboarding.paywall.features.return"
+  | "onboarding.paywall.features.personal"
+  | "onboarding.paywall.features.nothingLost"
+  | "onboarding.paywall.lifetime"
+  | "onboarding.paywall.lifetimeSub"
+  | "onboarding.paywall.cta"
+  | "onboarding.paywall.restore"
+  | "onboarding.paywall.free"
   | "onboarding.arrivalBody"
   | "onboarding.arrivalAction"
+  | "onboarding.emotionalEntryTitle"
+  | "onboarding.emotionalEntryBody"
+  | "onboarding.emotionalEntryAction"
+  | "onboarding.problemTitle"
+  | "onboarding.problemBody"
+  | "onboarding.deeperTruthTitle"
+  | "onboarding.deeperTruthBody"
+  | "onboarding.solutionTitle"
+  | "onboarding.solutionBody"
   | "onboarding.welcomeTitle"
   | "onboarding.welcomeBody"
   | "onboarding.welcomeHero"
@@ -36,6 +110,7 @@ export type TranslationKey =
   | "onboarding.nameTitle"
   | "onboarding.nameBody"
   | "onboarding.namePlaceholder"
+  | "onboarding.nameConfirmationBody"
   | "onboarding.ackBody"
   | "onboarding.ackCard"
   | "onboarding.preferenceTitle"
@@ -74,6 +149,25 @@ export type TranslationKey =
   | "onboarding.ritualTimeCustomBody"
   | "onboarding.notificationPermissionTitle"
   | "onboarding.notificationPermissionBody"
+  | "onboarding.preparingTitle"
+  | "onboarding.preparingSubtitle"
+  | "onboarding.preparingBody"
+  | "onboarding.preparingReceiptLabel"
+  | "onboarding.preparing.statusShape"
+  | "onboarding.preparing.statusQuietPlace"
+  | "onboarding.preparing.statusAligned"
+  | "onboarding.preparing.statusFirstPage"
+  | "onboarding.preparingStatusRhythm"
+  | "onboarding.preparingStatusPage"
+  | "onboarding.preparingStatusThought"
+  | "onboarding.preparingStatusAlmost"
+  | "onboarding.preparingSummaryName"
+  | "onboarding.preparingSummaryFocus"
+  | "onboarding.preparingSummaryTime"
+  | "onboarding.preparingSummaryLanguage"
+  | "onboarding.firstPageReadyTitle"
+  | "onboarding.firstPageReadyBody"
+  | "onboarding.firstPageReadyAction"
   | "onboarding.membershipBenefitKeep"
   | "onboarding.membershipBenefitCollections"
   | "onboarding.membershipBenefitStyle"
@@ -96,10 +190,13 @@ export type TranslationKey =
   | "today.noteLockedBody"
   | "today.noteLimitHint"
   | "today.followUpAction"
+  | "today.followUpHelper"
   | "today.followUpLoading"
   | "today.followUpTitle"
   | "today.followUpError"
+  | "today.followUpEmpty"
   | "today.followUpLimitBody"
+  | "today.followUpRetry"
   | "today.swipeHint"
   | "today.tomorrowHint"
   | "today.preparing"
@@ -365,6 +462,7 @@ export type TranslationKey =
   | "membership.upgradeNotificationBody"
   | "preview.title"
   | "preview.subtitle"
+  | "preview.bridge"
   | "preview.primaryAction"
   | "preview.secondaryAction"
   | "preview.loading"
@@ -378,6 +476,9 @@ export type TranslationKey =
   | "membership.benefitStyle"
   | "membership.benefitUnlimited"
   | "membership.benefitNothingLost"
+  | "membership.valueIntro"
+  | "membership.premiumTrustNote"
+  | "membership.freeTrustNote"
   | "membership.trialLineOne"
   | "membership.trialLineTwo"
   | "membership.socialProof"
@@ -402,8 +503,18 @@ export type TranslationKey =
   | "membership.lockedFeatureFootnote"
   | "membership.lifelongBadge"
   | "membership.planFreemium"
+  | "membership.planMonthly"
+  | "membership.planYearly"
   | "membership.planPremium"
   | "membership.planLifelong"
+  | "membership.planMonthlyNote"
+  | "membership.planYearlyNote"
+  | "membership.priceSuffixMonthly"
+  | "membership.priceSuffixYearly"
+  | "membership.priceSuffixLifetime"
+  | "membership.subscriptionRenewalNote"
+  | "membership.oneTimePurchaseNote"
+  | "membership.storeUnavailableNote"
   | "membership.choosePremium"
   | "membership.chooseLifelong"
   | "membership.switchToPremium"
@@ -428,7 +539,77 @@ export const englishMessages: Messages = {
   "tabs.archive": "Archive",
   "tabs.favorites": "Favorites",
   "tabs.settings": "Settings",
+  "brand.quietPlace": "A quiet place for thoughts that should stay.",
+  "onboarding.welcome.title": "Welcome.",
+  "onboarding.welcome.subtitle": "Take a moment.",
+  "onboarding.welcome.cta": "Continue",
+  "onboarding.entry.title": "Most thoughts pass.\nSome should stay.",
+  "onboarding.entry.text": "Not everything needs to be loud.\nSome things just need a place.",
+  "onboarding.entry.cta": "Enter",
+  "onboarding.problem.title": "Your mind is rarely quiet.",
+  "onboarding.problem.text":
+    "You scroll.\nYou move from one thing to the next.\n\nThere is always something new —\nbut rarely a moment to stay.\n\nAnd the thoughts that matter most?\nThey disappear in between.",
+  "onboarding.problem.cta": "Continue",
+  "onboarding.deeperTruth.title": "You do not need more content.",
+  "onboarding.deeperTruth.text":
+    "You need a moment.\n\nFive minutes of stillness.\nOne thought worth holding.\n\nA space where you can slow down\nand return to yourself.",
+  "onboarding.deeperTruth.cta": "Continue",
+  "onboarding.solution.title": "This is that space.",
+  "onboarding.solution.text":
+    "One page a day.\n\nA quiet thought.\nA place to reflect.\nA moment that belongs only to you.",
+  "onboarding.solution.cta": "Continue",
+  "onboarding.language.title": "Choose your language",
+  "onboarding.language.subtitle": "So it feels natural to you.",
+  "onboarding.nameInput.title": "What should we call you?",
+  "onboarding.nameInput.subtitle": "So this space can feel like yours.",
+  "onboarding.nameInput.placeholder": "Your name",
+  "onboarding.nameInput.cta": "Continue",
+  "onboarding.nameConfirm.title": "Good to have you here, {{name}}.",
+  "onboarding.nameConfirm.titleFallback": "Good to have you here.",
+  "onboarding.nameConfirm.subtitle": "This is your space now.",
+  "onboarding.nameConfirm.cta": "Continue",
+  "onboarding.intent.title": "What do you want more of in your life?",
+  "onboarding.intent.subtitle": "Not everything.\nJust what matters.",
+  "onboarding.intent.helper": "You can always change this later.",
+  "onboarding.moment.title": "When should it arrive?",
+  "onboarding.moment.subtitle": "A quiet moment, just for you.",
+  "onboarding.time.title": "Choose your exact moment",
+  "onboarding.time.subtitle": "So it fits your rhythm.",
+  "onboarding.notification.title": "Let it arrive gently",
+  "onboarding.notification.text":
+    "Not as noise.\n\nJust a quiet reminder\nthat something meaningful is waiting for you.",
+  "onboarding.notification.allow": "Allow notifications",
+  "onboarding.notification.skip": "Not now",
+  "onboarding.preparing.title": "Creating your space…",
+  "onboarding.preparing.subtitle": "Just a moment.",
+  "onboarding.preparing.text":
+    "A quiet place is being prepared for you.\n\nOne that fits your rhythm.\nOne that stays with you.",
+  "onboarding.preparing.statusShape": "Your space is taking shape …",
+  "onboarding.preparing.statusQuietPlace": "A quiet place is being prepared for you …",
+  "onboarding.preparing.statusAligned": "Your moment is being aligned …",
+  "onboarding.preparing.statusFirstPage": "A first page is being formed …",
+  "onboarding.preparing.statusRhythm": "Finding a quieter rhythm...",
+  "onboarding.preparing.statusPage": "Shaping your daily page...",
+  "onboarding.preparing.statusThought": "Preparing a thought for this moment...",
+  "onboarding.preparing.statusAlmost": "Almost ready.",
+  "onboarding.firstPageIntro.title": "Your first page is ready",
+  "onboarding.firstPageIntro.subtitle": "Take a moment.\nThere is no need to rush.",
+  "onboarding.firstPageIntro.cta": "Open",
+  "onboarding.paywall.title": "Some thoughts are worth keeping.",
+  "onboarding.paywall.subtitle": "Not everything needs to stay.\nBut some things should never disappear.",
+  "onboarding.paywall.premiumTitle": "More space. More depth.",
+  "onboarding.paywall.premiumSubtitle": "A place that becomes yours over time.",
+  "onboarding.paywall.features.keep": "Keep the pages that matter",
+  "onboarding.paywall.features.return": "Return to your thoughts anytime",
+  "onboarding.paywall.features.personal": "Unlock a deeper, more personal space",
+  "onboarding.paywall.features.nothingLost": "Let nothing important fade away",
+  "onboarding.paywall.lifetime": "Once. For good.",
+  "onboarding.paywall.lifetimeSub": "A place that stays with you.",
+  "onboarding.paywall.cta": "Continue with Premium",
+  "onboarding.paywall.restore": "Restore purchases",
+  "onboarding.paywall.free": "Continue for free",
   "common.continue": "Continue",
+  "common.back": "Back",
   "common.continueWithoutName": "Continue without name",
   "common.notNow": "Not now",
   "common.allowNotifications": "Allow notifications",
@@ -437,8 +618,20 @@ export const englishMessages: Messages = {
   "common.cancel": "Cancel",
   "common.reset": "Reset",
   "common.refresh": "Refresh",
-  "onboarding.arrivalBody": "A quiet place for the thoughts that should stay.",
+  "onboarding.arrivalBody": "Take a moment.",
   "onboarding.arrivalAction": "Begin",
+  "onboarding.emotionalEntryTitle": "Most thoughts pass.\nSome should stay.",
+  "onboarding.emotionalEntryBody": "Not everything needs to be loud.\nSome things just need a place.",
+  "onboarding.emotionalEntryAction": "Enter",
+  "onboarding.problemTitle": "Your mind is rarely quiet.",
+  "onboarding.problemBody":
+    "You scroll.\nYou move from one thing to the next.\n\nThere is always something new —\nbut rarely a moment to stay.\n\nAnd the thoughts that matter most?\nThey disappear in between.",
+  "onboarding.deeperTruthTitle": "You do not need more content.",
+  "onboarding.deeperTruthBody":
+    "You need a moment.\n\nFive minutes of stillness.\nOne thought worth holding.\n\nA space where you can slow down\nand return to yourself.",
+  "onboarding.solutionTitle": "This is that space.",
+  "onboarding.solutionBody":
+    "One page a day.\n\nA quiet thought.\nA place to reflect.\nA moment that belongs only to you.",
   "onboarding.welcomeTitle": "Take a moment.",
   "onboarding.welcomeBody": "Some thoughts deserve more than a passing moment.",
   "onboarding.welcomeHero": "Not everything meaningful should disappear.",
@@ -446,16 +639,17 @@ export const englishMessages: Messages = {
   "onboarding.welcomeLineTwo": "Your thoughts get lost in between.",
   "onboarding.welcomeLineThree": "One page a day.\nNothing more.",
   "onboarding.languageTitle": "Choose your language",
-  "onboarding.languageBody": "You can change this anytime.",
+  "onboarding.languageBody": "So it feels natural to you.",
   "onboarding.languageSearchPlaceholder": "Search language",
   "onboarding.nameTitle": "What should we call you?",
-  "onboarding.nameBody": "This space can become more personal.",
+  "onboarding.nameBody": "So this space can feel like yours.",
   "onboarding.namePlaceholder": "Your name",
+  "onboarding.nameConfirmationBody": "This is your space now.",
   "onboarding.ackBody": "This can become a space of your own.",
-  "onboarding.ackCard": "One page each day. Quiet enough to notice what stays with you.",
-  "onboarding.preferenceTitle": "What do you want more of?",
-  "onboarding.preferenceBody": "Choose up to two things you want to orient yourself toward more often.",
-  "onboarding.preferenceHint": "Choose up to two.",
+  "onboarding.ackCard": "A quiet place for the thoughts that should stay.",
+  "onboarding.preferenceTitle": "What do you want more of in your life?",
+  "onboarding.preferenceBody": "Not everything.\nJust what matters.",
+  "onboarding.preferenceHint": "Choose up to two. You can always change this later.",
   "onboarding.transitionTitle": "Let's begin.",
   "onboarding.transitionBody": "Your first page is ready.",
   "onboarding.transitionAction": "To first page",
@@ -472,11 +666,11 @@ export const englishMessages: Messages = {
   "onboarding.choicePremiumBody": "Thoughts that matter deserve a place.\nMake this space something that truly feels like yours.",
   "onboarding.choicePremiumAction": "Start Premium",
   "onboarding.finishAction": "Open Daytri",
-  "onboarding.notificationTimeTitle": "Choose the exact time.",
-  "onboarding.notificationTimeBody": "Your daily page can arrive exactly when it fits.",
-  "onboarding.ritualTimeTitle": "When is your moment?",
-  "onboarding.ritualTimeBody": "Choose the part of the day that feels most like yours.",
-  "onboarding.ritualTimeHint": "People stay more consistent when the moment truly fits their day.",
+  "onboarding.notificationTimeTitle": "Choose your exact moment",
+  "onboarding.notificationTimeBody": "So it fits your rhythm.",
+  "onboarding.ritualTimeTitle": "When should it arrive?",
+  "onboarding.ritualTimeBody": "A quiet moment, just for you.",
+  "onboarding.ritualTimeHint": "You can always refine this later.",
   "onboarding.ritualTimeMorningTitle": "Morning (6-9)",
   "onboarding.ritualTimeMorningBody": "Start your day with clarity",
   "onboarding.ritualTimeMiddayTitle": "Midday (11-14)",
@@ -487,8 +681,25 @@ export const englishMessages: Messages = {
   "onboarding.ritualTimeLateBody": "A calm way to close your day",
   "onboarding.ritualTimeCustomTitle": "Choose your own time",
   "onboarding.ritualTimeCustomBody": "Set a moment that truly fits your rhythm",
-  "onboarding.notificationPermissionTitle": "Let it arrive gently.",
-  "onboarding.notificationPermissionBody": "Only at the time you choose.",
+  "onboarding.notificationPermissionTitle": "Let it arrive gently",
+  "onboarding.notificationPermissionBody":
+    "Not as noise.\n\nJust a quiet reminder\nthat something meaningful is waiting for you.",
+  "onboarding.preparingTitle": "Creating your space…",
+  "onboarding.preparingSubtitle": "Just a moment.",
+  "onboarding.preparingBody":
+    "A quiet place is being prepared for you.\n\nOne that fits your rhythm.\nOne that stays with you.",
+  "onboarding.preparingReceiptLabel": "Prepared for you",
+  "onboarding.preparingStatusRhythm": "Finding a quieter rhythm...",
+  "onboarding.preparingStatusPage": "Shaping your daily page...",
+  "onboarding.preparingStatusThought": "Preparing a thought for this moment...",
+  "onboarding.preparingStatusAlmost": "Almost ready.",
+  "onboarding.preparingSummaryName": "Name",
+  "onboarding.preparingSummaryFocus": "Focus",
+  "onboarding.preparingSummaryTime": "Time",
+  "onboarding.preparingSummaryLanguage": "Language",
+  "onboarding.firstPageReadyTitle": "Your first page is ready",
+  "onboarding.firstPageReadyBody": "Take a breath.\nThere is no need to rush.",
+  "onboarding.firstPageReadyAction": "Open page",
   "onboarding.membershipBenefitKeep": "Save pages that stay with you",
   "onboarding.membershipBenefitCollections": "Build personal collections",
   "onboarding.membershipBenefitStyle": "Shape color, type, and atmosphere",
@@ -511,10 +722,13 @@ export const englishMessages: Messages = {
   "today.noteLockedBody": "Freemium keeps notes for reflections you choose to keep. Premium opens longer notes and more space around what stays with you.",
   "today.noteLimitHint": "Freemium keeps notes shorter. Premium opens longer reflection notes.",
   "today.followUpAction": "Deepen the reflection",
-  "today.followUpLoading": "A quieter impulse is arriving ...",
+  "today.followUpHelper": "If you want to go deeper, another reflection can emerge from your note.",
+  "today.followUpLoading": "Deepening the thought ...",
   "today.followUpTitle": "Further prompts",
-  "today.followUpError": "A further prompt could not be prepared right now.",
+  "today.followUpError": "A deeper reflection is not available right now.",
+  "today.followUpEmpty": "No further prompt could be formed from this note just now.",
   "today.followUpLimitBody": "The daily AI follow-up is already in use today. Premium opens more space for additional prompts.",
+  "today.followUpRetry": "Try again",
   "today.swipeHint": "Swipe gently across the page to move through saved days.",
   "today.tomorrowHint": "Tomorrow brings a new page.",
   "today.preparing": "Your reflection is being prepared.",
@@ -749,19 +963,20 @@ export const englishMessages: Messages = {
   "collections.addSheetBody": "Choose a personal collection for this kept reflection, or begin a new one.",
   "collections.addedNotice": "Added to collection",
   "list.saved": "Kept",
-  "membership.eyebrow": "Membership",
+  "membership.eyebrow": "For what stays",
   "membership.title": "Make this space truly yours.",
-  "membership.subtitle": "Freemium begins gently. Premium and Lifelong open more room for beauty, ownership, and reflection.",
-  "membership.heroLine": "Keep what matters.\nShape it in a way that feels right to you.",
+  "membership.subtitle": "Not everything needs to stay.\nBut some things should never disappear.",
+  "membership.heroLine": "Premium turns a daily page into a space you can return to, shape, and keep.",
   "membership.premiumIncludedTitle": "Premium unlocks",
   "membership.premiumCardLine": "More space. More depth.\nMore of what stays.",
-  "membership.premiumCardBody": "Thoughts that matter deserve a place.\nMake this space something that truly belongs to you.",
+  "membership.premiumCardBody":
+    "What begins as a quiet ritual can become a place to return to.\nKeep the pages that matter and let them stay with you.",
   "membership.lifelongCardLine": "Once. For good.",
-  "membership.lifelongCardBody": "A space that belongs to you forever.",
-  "membership.lifelongCardNote": "Decide once.\nAnd everything stays with you — no renewal.",
+  "membership.lifelongCardBody": "For the thoughts and pages you know you want to keep.",
+  "membership.lifelongCardNote": "Pay once. Keep the space for good.\nNo subscription. No renewal.",
   "membership.freemiumMiniTitle": "FREE",
   "membership.freemiumMiniBody": "A quiet beginning.\nOne page at a time.",
-  "membership.freeAction": "Continue free",
+  "membership.freeAction": "Continue with Free",
   "membership.currentPlanCta": "Current plan",
   "membership.includedWithLifelong": "Included with Lifelong",
   "membership.postReflectionInviteTitle": "Keep what matters.",
@@ -779,11 +994,12 @@ export const englishMessages: Messages = {
   "membership.upgradeNotificationTitle": "What you hold onto stays.",
   "membership.upgradeNotificationBody": "Keep pages that matter and let nothing get lost.",
   "preview.title": "Your first page.",
-  "preview.subtitle": "Take a moment.",
-  "preview.primaryAction": "Continue",
-  "preview.secondaryAction": "Open later",
+  "preview.subtitle": "Take a moment. This one is yours.",
+  "preview.bridge": "If it stays with you, there is room to keep it.",
+  "preview.primaryAction": "Keep going",
+  "preview.secondaryAction": "Return later",
   "preview.loading": "A quiet moment is being prepared.",
-  "membership.anchorStay": "Most stay.",
+  "membership.anchorStay": "Choose what fits the way you want to keep what matters.",
   "membership.bestValue": "Best value",
   "membership.benefitKeepClose": "Keep more of what matters to you",
   "membership.benefitWriteFreely": "Write without feeling limited",
@@ -793,6 +1009,10 @@ export const englishMessages: Messages = {
   "membership.benefitStyle": "Shape colors, typography, and style your way",
   "membership.benefitUnlimited": "Your own space — without limits",
   "membership.benefitNothingLost": "Everything stays. Nothing gets lost",
+  "membership.valueIntro": "What opens when this becomes yours",
+  "membership.premiumTrustNote":
+    "Clear pricing. Restore anytime. Continue free if this is not the moment yet.",
+  "membership.freeTrustNote": "You can begin here quietly and decide later.",
   "membership.trialLineOne": "7-day free trial",
   "membership.trialLineTwo": "Cancel anytime",
   "membership.socialProof": "Many users already keep their most important pages here.",
@@ -817,8 +1037,18 @@ export const englishMessages: Messages = {
   "membership.lockedFeatureFootnote": "Prepared quietly for Premium.",
   "membership.lifelongBadge": "SUPPORTER",
   "membership.planFreemium": "Freemium",
+  "membership.planMonthly": "Monthly",
+  "membership.planYearly": "Yearly",
   "membership.planPremium": "Premium",
   "membership.planLifelong": "Lifelong",
+  "membership.planMonthlyNote": "Flexible and billed every month.",
+  "membership.planYearlyNote": "Recommended for a calmer year.",
+  "membership.priceSuffixMonthly": "/ month",
+  "membership.priceSuffixYearly": "/ year",
+  "membership.priceSuffixLifetime": "one-time",
+  "membership.subscriptionRenewalNote": "Subscriptions renew automatically until canceled.",
+  "membership.oneTimePurchaseNote": "One-time purchase. No renewal.",
+  "membership.storeUnavailableNote": "Store pricing is quiet for the moment. The screen stays available and purchases can return when the connection is ready.",
   "membership.choosePremium": "Start premium",
   "membership.chooseLifelong": "Unlock forever",
   "membership.switchToPremium": "Switch to Premium",
@@ -838,11 +1068,73 @@ export const englishMessages: Messages = {
 
 export const germanMessages: Messages = {
   ...englishMessages,
+  "brand.quietPlace": "Ein ruhiger Ort für Gedanken, die bleiben sollen.",
+  "onboarding.welcome.title": "Willkommen.",
+  "onboarding.welcome.subtitle": "Nimm dir einen Moment.",
+  "onboarding.welcome.cta": "Weiter",
+  "onboarding.entry.title": "Die meisten Gedanken vergehen.\nEinige sollten bleiben.",
+  "onboarding.entry.text": "Nicht alles muss laut sein.\nManches braucht einfach einen Ort.",
+  "onboarding.entry.cta": "Eintreten",
+  "onboarding.problem.title": "Dein Kopf ist selten still.",
+  "onboarding.problem.text":
+    "Du scrollst.\nDu springst von einem zum nächsten.\n\nEs gibt immer etwas Neues —\naber selten einen Moment zum Bleiben.\n\nUnd die Gedanken, die wirklich zählen?\nSie verschwinden dazwischen.",
+  "onboarding.problem.cta": "Weiter",
+  "onboarding.deeperTruth.title": "Du brauchst nicht mehr Inhalte.",
+  "onboarding.deeperTruth.text":
+    "Du brauchst einen Moment.\n\nFünf Minuten Stille.\nEinen Gedanken, der es wert ist.\n\nEinen Raum, in dem du langsamer wirst\nund wieder bei dir ankommst.",
+  "onboarding.deeperTruth.cta": "Weiter",
+  "onboarding.solution.title": "Das ist dieser Raum.",
+  "onboarding.solution.text":
+    "Eine Seite am Tag.\n\nEin ruhiger Gedanke.\nEin Ort zum Reflektieren.\nEin Moment, der nur dir gehört.",
+  "onboarding.solution.cta": "Weiter",
+  "onboarding.language.title": "Wähle deine Sprache",
+  "onboarding.language.subtitle": "Damit es sich für dich natürlich anfühlt.",
+  "onboarding.nameInput.title": "Wie sollen wir dich nennen?",
+  "onboarding.nameInput.subtitle": "Damit sich dieser Ort wie deiner anfühlt.",
+  "onboarding.nameInput.placeholder": "Dein Name",
+  "onboarding.nameInput.cta": "Weiter",
+  "onboarding.nameConfirm.title": "Schön, dass du hier bist, {{name}}.",
+  "onboarding.nameConfirm.titleFallback": "Schön, dass du hier bist.",
+  "onboarding.nameConfirm.subtitle": "Das ist jetzt dein Raum.",
+  "onboarding.nameConfirm.cta": "Weiter",
+  "onboarding.intent.title": "Wovon möchtest du mehr in deinem Leben?",
+  "onboarding.intent.subtitle": "Nicht alles.\nNur das, was zählt.",
+  "onboarding.intent.helper": "Du kannst das später jederzeit ändern.",
+  "onboarding.moment.title": "Wann soll es zu dir kommen?",
+  "onboarding.moment.subtitle": "Ein ruhiger Moment, nur für dich.",
+  "onboarding.time.title": "Wähle deinen Moment",
+  "onboarding.time.subtitle": "Damit es zu deinem Rhythmus passt.",
+  "onboarding.notification.title": "Lass es sanft zu dir kommen",
+  "onboarding.notification.text":
+    "Nicht als Lärm.\n\nNur als leise Erinnerung,\ndass etwas Bedeutungsvolles auf dich wartet.",
+  "onboarding.notification.allow": "Benachrichtigungen erlauben",
+  "onboarding.notification.skip": "Jetzt nicht",
+  "onboarding.preparing.title": "Dein Raum wird vorbereitet…",
+  "onboarding.preparing.subtitle": "Einen Moment.",
+  "onboarding.preparing.text":
+    "Ein ruhiger Ort wird für dich vorbereitet.\n\nEiner, der zu deinem Rhythmus passt.\nEiner, der bei dir bleibt.",
+  "onboarding.firstPageIntro.title": "Deine erste Seite ist bereit",
+  "onboarding.firstPageIntro.subtitle": "Nimm dir einen Moment.\nDu musst dich nicht beeilen.",
+  "onboarding.firstPageIntro.cta": "Öffnen",
+  "onboarding.paywall.title": "Manche Gedanken sind es wert zu bleiben.",
+  "onboarding.paywall.subtitle": "Nicht alles muss bleiben.\nAber manches sollte nie verschwinden.",
+  "onboarding.paywall.premiumTitle": "Mehr Raum. Mehr Tiefe.",
+  "onboarding.paywall.premiumSubtitle": "Ein Ort, der mit der Zeit deiner wird.",
+  "onboarding.paywall.features.keep": "Behalte die Seiten, die zählen",
+  "onboarding.paywall.features.return": "Kehre jederzeit zu deinen Gedanken zurück",
+  "onboarding.paywall.features.personal": "Öffne einen tieferen, persönlicheren Raum",
+  "onboarding.paywall.features.nothingLost": "Lass nichts Wichtiges verloren gehen",
+  "onboarding.paywall.lifetime": "Einmal. Für immer.",
+  "onboarding.paywall.lifetimeSub": "Ein Ort, der bei dir bleibt.",
+  "onboarding.paywall.cta": "Mit Premium fortfahren",
+  "onboarding.paywall.restore": "Käufe wiederherstellen",
+  "onboarding.paywall.free": "Kostenlos fortfahren",
   "tabs.today": "Heute",
   "tabs.archive": "Archiv",
   "tabs.favorites": "Gesammelt",
   "tabs.settings": "Einstellungen",
   "common.continue": "Weiter",
+  "common.back": "Zurück",
   "common.continueWithoutName": "Ohne Namen fortfahren",
   "common.notNow": "Nicht jetzt",
   "common.allowNotifications": "Benachrichtigungen erlauben",
@@ -851,8 +1143,20 @@ export const germanMessages: Messages = {
   "common.cancel": "Abbrechen",
   "common.reset": "Zurücksetzen",
   "common.refresh": "Aktualisieren",
-  "onboarding.arrivalBody": "Ein ruhiger Ort für Gedanken, die bleiben dürfen.",
+  "onboarding.arrivalBody": "Nimm dir einen Moment.",
   "onboarding.arrivalAction": "Beginnen",
+  "onboarding.emotionalEntryTitle": "Die meisten Gedanken gehen vorüber.\nManche sollten bleiben.",
+  "onboarding.emotionalEntryBody": "Nicht alles muss laut sein.\nManches braucht einfach einen Ort.",
+  "onboarding.emotionalEntryAction": "Eintreten",
+  "onboarding.problemTitle": "Dein Kopf ist selten still.",
+  "onboarding.problemBody":
+    "Du scrollst.\nDu gehst von einem zum nächsten.\n\nEs gibt immer etwas Neues —\naber selten einen Moment zum Bleiben.\n\nUnd die Gedanken, die wirklich wichtig sind?\nSie verschwinden dazwischen.",
+  "onboarding.deeperTruthTitle": "Du brauchst nicht mehr Inhalt.",
+  "onboarding.deeperTruthBody":
+    "Du brauchst einen Moment.\n\nFünf Minuten Stille.\nEinen Gedanken, den es wert ist zu halten.\n\nEinen Raum, in dem du langsamer wirst\nund zu dir zurückfindest.",
+  "onboarding.solutionTitle": "Das ist dieser Raum.",
+  "onboarding.solutionBody":
+    "Eine Seite pro Tag.\n\nEin stiller Gedanke.\nEin Ort zum Reflektieren.\nEin Moment, der nur dir gehört.",
   "onboarding.welcomeTitle": "Nimm dir einen Moment.",
   "onboarding.welcomeBody": "Manche Gedanken verdienen mehr als ein Vorübergehen.",
   "onboarding.welcomeHero": "Nicht alles, was wichtig ist, sollte verschwinden.",
@@ -860,16 +1164,17 @@ export const germanMessages: Messages = {
   "onboarding.welcomeLineTwo": "Dazwischen gehen Gedanken verloren.",
   "onboarding.welcomeLineThree": "Eine Seite am Tag.\nNicht mehr.",
   "onboarding.languageTitle": "Wähle deine Sprache",
-  "onboarding.languageBody": "Du kannst sie jederzeit ändern.",
+  "onboarding.languageBody": "Damit es sich natürlich für dich anfühlt.",
   "onboarding.languageSearchPlaceholder": "Sprache suchen",
   "onboarding.nameTitle": "Wie sollen wir dich nennen?",
-  "onboarding.nameBody": "Dieser Raum darf persönlicher werden.",
+  "onboarding.nameBody": "Damit sich dieser Raum mehr nach dir anfühlt.",
   "onboarding.namePlaceholder": "Dein Name",
+  "onboarding.nameConfirmationBody": "Das ist jetzt dein Raum.",
   "onboarding.ackBody": "Dieser Raum kann wirklich deiner werden.",
-  "onboarding.ackCard": "Eine Seite pro Tag. Ruhig genug, um wahrzunehmen, was bei dir bleibt.",
-  "onboarding.preferenceTitle": "Wovon möchtest du mehr?",
-  "onboarding.preferenceBody": "Wähle bis zu zwei Dinge, nach denen du dich öfter ausrichten möchtest.",
-  "onboarding.preferenceHint": "Bis zu zwei auswählen.",
+  "onboarding.ackCard": "Ein ruhiger Ort für Gedanken, die bleiben dürfen.",
+  "onboarding.preferenceTitle": "Wovon möchtest du mehr in deinem Leben?",
+  "onboarding.preferenceBody": "Nicht von allem.\nNur von dem, was zählt.",
+  "onboarding.preferenceHint": "Wähle bis zu zwei. Du kannst es später jederzeit ändern.",
   "onboarding.transitionTitle": "Lass uns beginnen.",
   "onboarding.transitionBody": "Deine erste Seite wartet bereits auf dich.",
   "onboarding.transitionAction": "Zur ersten Seite",
@@ -886,11 +1191,11 @@ export const germanMessages: Messages = {
   "onboarding.choicePremiumBody": "Gedanken, die zählen, verdienen einen Platz.\nMach diesen Raum zu etwas, das wirklich dir gehört.",
   "onboarding.choicePremiumAction": "Premium starten",
   "onboarding.finishAction": "Daytri öffnen",
-  "onboarding.notificationTimeTitle": "Wähle die genaue Zeit.",
-  "onboarding.notificationTimeBody": "Deine tägliche Seite kann dich genau dann erreichen, wenn es für dich passt.",
-  "onboarding.ritualTimeTitle": "Wann ist dein Moment?",
-  "onboarding.ritualTimeBody": "Wähle den Teil des Tages, der sich für dich richtig anfühlt.",
-  "onboarding.ritualTimeHint": "Am besten bleibt man dran, wenn der Moment wirklich zum Tag passt.",
+  "onboarding.notificationTimeTitle": "Wähle deinen genauen Moment",
+  "onboarding.notificationTimeBody": "Damit er zu deinem Rhythmus passt.",
+  "onboarding.ritualTimeTitle": "Wann soll sie ankommen?",
+  "onboarding.ritualTimeBody": "Ein stiller Moment, nur für dich.",
+  "onboarding.ritualTimeHint": "Du kannst das später jederzeit anpassen.",
   "onboarding.ritualTimeMorningTitle": "Morgen (6-9)",
   "onboarding.ritualTimeMorningBody": "Beginne deinen Tag mit Klarheit",
   "onboarding.ritualTimeMiddayTitle": "Mittag (11-14)",
@@ -901,8 +1206,29 @@ export const germanMessages: Messages = {
   "onboarding.ritualTimeLateBody": "Ein ruhiger Ausklang für deinen Tag",
   "onboarding.ritualTimeCustomTitle": "Eigene Zeit wählen",
   "onboarding.ritualTimeCustomBody": "Wähle den Moment, der wirklich zu deinem Rhythmus passt",
-  "onboarding.notificationPermissionTitle": "Lass sie dich sanft erreichen.",
-  "onboarding.notificationPermissionBody": "Nur zu der Zeit, die du wählst.",
+  "onboarding.notificationPermissionTitle": "Lass sie sanft ankommen",
+  "onboarding.notificationPermissionBody":
+    "Nicht als Lärm.\n\nNur als leise Erinnerung,\ndass etwas Bedeutungsvolles auf dich wartet.",
+  "onboarding.preparingTitle": "Dein Raum entsteht…",
+  "onboarding.preparingSubtitle": "Nur einen Moment.",
+  "onboarding.preparingBody":
+    "Ein ruhiger Ort wird für dich vorbereitet.\n\nEiner, der zu deinem Rhythmus passt.\nEiner, der bei dir bleibt.",
+  "onboarding.preparingReceiptLabel": "Für dich vorbereitet",
+  "onboarding.preparing.statusShape": "Dein Raum nimmt Form an …",
+  "onboarding.preparing.statusQuietPlace": "Ein ruhiger Ort wird für dich vorbereitet …",
+  "onboarding.preparing.statusAligned": "Dein Moment wird auf dich abgestimmt …",
+  "onboarding.preparing.statusFirstPage": "Eine erste Seite entsteht …",
+  "onboarding.preparingStatusRhythm": "Ein ruhigerer Rhythmus wird gefunden...",
+  "onboarding.preparingStatusPage": "Deine tägliche Seite nimmt Form an...",
+  "onboarding.preparingStatusThought": "Ein Gedanke für diesen Moment wird vorbereitet...",
+  "onboarding.preparingStatusAlmost": "Fast bereit.",
+  "onboarding.preparingSummaryName": "Name",
+  "onboarding.preparingSummaryFocus": "Fokus",
+  "onboarding.preparingSummaryTime": "Zeit",
+  "onboarding.preparingSummaryLanguage": "Sprache",
+  "onboarding.firstPageReadyTitle": "Deine erste Seite ist bereit",
+  "onboarding.firstPageReadyBody": "Atme kurz durch.\nEs gibt keinen Grund zur Eile.",
+  "onboarding.firstPageReadyAction": "Seite öffnen",
   "onboarding.membershipBenefitKeep": "Bewahre Seiten, die bleiben",
   "onboarding.membershipBenefitCollections": "Lege persönliche Sammlungen an",
   "onboarding.membershipBenefitStyle": "Gestalte Farben, Typografie und Stimmung",
@@ -925,10 +1251,13 @@ export const germanMessages: Messages = {
   "today.noteLockedBody": "Freemium hält Notizen für die Reflexionen offen, die du bewusst behältst. Premium öffnet längere Notizen und mehr Raum um das, was bei dir bleibt.",
   "today.noteLimitHint": "Freemium hält Notizen bewusst kürzer. Premium öffnet längere Reflexionsnotizen.",
   "today.followUpAction": "Impuls vertiefen",
-  "today.followUpLoading": "Ein weiterer stiller Impuls entsteht ...",
+  "today.followUpHelper": "Wenn du tiefer gehen möchtest, kann aus deiner Notiz ein weiterer Impuls entstehen.",
+  "today.followUpLoading": "Impuls wird vertieft ...",
   "today.followUpTitle": "Vertiefende Impulse",
-  "today.followUpError": "Ein vertiefender Impuls konnte gerade nicht vorbereitet werden.",
+  "today.followUpError": "Im Moment konnte kein vertiefender Impuls vorbereitet werden.",
+  "today.followUpEmpty": "Gerade konnte aus dieser Notiz noch kein vertiefender Impuls geformt werden.",
   "today.followUpLimitBody": "Der tägliche KI-Impuls ist heute bereits verwendet. Premium öffnet mehr Raum für weitere vertiefende Fragen.",
+  "today.followUpRetry": "Noch einmal versuchen",
   "today.swipeHint": "Wische sanft über die Seite, um durch gespeicherte Tage zu gehen.",
   "today.tomorrowHint": "Morgen wartet eine neue Seite.",
   "today.preparing": "Deine Reflexion wird vorbereitet.",
@@ -1163,19 +1492,20 @@ export const germanMessages: Messages = {
   "collections.addSheetBody": "Wähle eine persönliche Sammlung für diese behaltene Reflexion oder beginne eine neue.",
   "collections.addedNotice": "Zur Sammlung hinzugefügt",
   "list.saved": "Behalten",
-  "membership.eyebrow": "Mitgliedschaft",
+  "membership.eyebrow": "Für das, was bleibt",
   "membership.title": "Mach diesen Raum wirklich zu deinem.",
-  "membership.subtitle": "Freemium beginnt bewusst schlicht. Premium und Lifelong öffnen mehr Raum für das, was du bewahren und gestalten möchtest.",
-  "membership.heroLine": "Behalte, was dir wichtig ist.\nGestalte es so, wie es sich für dich richtig anfühlt.",
+  "membership.subtitle": "Nicht alles muss bleiben.\nAber manches sollte nicht verschwinden.",
+  "membership.heroLine": "Premium macht aus einer täglichen Seite einen Raum, zu dem du zurückkehren, den du gestalten und bewahren kannst.",
   "membership.premiumIncludedTitle": "Premium öffnet",
   "membership.premiumCardLine": "Mehr Raum. Mehr Tiefe.\nMehr von dem, was bleibt.",
-  "membership.premiumCardBody": "Gedanken, die zählen, verdienen einen Platz.\nMach diesen Raum zu etwas, das wirklich dir gehört.",
+  "membership.premiumCardBody":
+    "Aus einem stillen Ritual wird ein Ort, zu dem du zurückkehren kannst.\nBehalte die Seiten, die dir wichtig sind, und lass sie bei dir bleiben.",
   "membership.lifelongCardLine": "Einmal. Für immer.",
-  "membership.lifelongCardBody": "Ein Raum, der dir für immer gehört.",
-  "membership.lifelongCardNote": "Einmal entscheiden.\nUnd alles bleibt bei dir – ohne Verlängerung.",
+  "membership.lifelongCardBody": "Für Gedanken und Seiten, die dich lange begleiten sollen.",
+  "membership.lifelongCardNote": "Einmal zahlen. Für immer behalten.\nKein Abo. Keine Verlängerung.",
   "membership.freemiumMiniTitle": "KOSTENLOS",
   "membership.freemiumMiniBody": "Ein ruhiger Anfang.\nEine Seite nach der anderen.",
-  "membership.freeAction": "Kostenlos weiter",
+  "membership.freeAction": "Mit Basis weiter",
   "membership.currentPlanCta": "Aktueller Plan",
   "membership.includedWithLifelong": "In Lifelong enthalten",
   "membership.postReflectionInviteTitle": "Behalte, was dir wichtig ist.",
@@ -1193,11 +1523,12 @@ export const germanMessages: Messages = {
   "membership.upgradeNotificationTitle": "Was du festhältst, bleibt.",
   "membership.upgradeNotificationBody": "Behalte Seiten, die dir wichtig sind, und lass nichts verloren gehen.",
   "preview.title": "Deine erste Seite.",
-  "preview.subtitle": "Nimm dir einen Moment.",
-  "preview.primaryAction": "Weiter",
-  "preview.secondaryAction": "Später öffnen",
+  "preview.subtitle": "Nimm dir einen Moment. Diese Seite gehört dir.",
+  "preview.bridge": "Wenn sie bei dir bleibt, ist Raum da, sie zu behalten.",
+  "preview.primaryAction": "Weitergehen",
+  "preview.secondaryAction": "Später zurückkehren",
   "preview.loading": "Ein ruhiger Moment wird vorbereitet.",
-  "membership.anchorStay": "Die meisten bleiben.",
+  "membership.anchorStay": "Wähle den Weg, auf dem du behalten möchtest, was dir wichtig ist.",
   "membership.bestValue": "Bester Wert",
   "membership.benefitKeepClose": "Behalte mehr von dem, was dir wichtig ist",
   "membership.benefitWriteFreely": "Schreibe ohne Begrenzung",
@@ -1207,6 +1538,10 @@ export const germanMessages: Messages = {
   "membership.benefitStyle": "Farben, Schrift & Stil nach deinem Gefühl",
   "membership.benefitUnlimited": "Dein persönlicher Raum – ohne Begrenzung",
   "membership.benefitNothingLost": "Alles bleibt. Nichts geht verloren",
+  "membership.valueIntro": "Was sich öffnet, wenn dieser Raum wirklich deiner wird",
+  "membership.premiumTrustNote":
+    "Klare Preise. Käufe lassen sich wiederherstellen. Und wenn jetzt nicht der Moment ist, kannst du ruhig mit der Basis weitergehen.",
+  "membership.freeTrustNote": "Du kannst hier ruhig beginnen und später entscheiden.",
   "membership.trialLineOne": "7 Tage kostenlos testen",
   "membership.trialLineTwo": "Jederzeit kündbar",
   "membership.socialProof": "Schon viele Nutzer speichern ihre wichtigsten Seiten.",
@@ -1231,8 +1566,18 @@ export const germanMessages: Messages = {
   "membership.lockedFeatureFootnote": "Still für Premium vorbereitet.",
   "membership.lifelongBadge": "SUPPORTER",
   "membership.planFreemium": "Freemium",
+  "membership.planMonthly": "Monatlich",
+  "membership.planYearly": "Jährlich",
   "membership.planPremium": "Premium",
   "membership.planLifelong": "Lifelong",
+  "membership.planMonthlyNote": "Flexibel und monatlich berechnet.",
+  "membership.planYearlyNote": "Empfohlen für ein ruhigeres Jahr.",
+  "membership.priceSuffixMonthly": "/ Monat",
+  "membership.priceSuffixYearly": "/ Jahr",
+  "membership.priceSuffixLifetime": "einmalig",
+  "membership.subscriptionRenewalNote": "Abonnements verlängern sich automatisch, bis du kündigst.",
+  "membership.oneTimePurchaseNote": "Einmaliger Kauf. Keine Verlängerung.",
+  "membership.storeUnavailableNote": "Store-Preise sind gerade still. Die Fläche bleibt verfügbar, und Käufe können zurückkehren, sobald die Verbindung wieder bereit ist.",
   "membership.choosePremium": "Premium starten",
   "membership.chooseLifelong": "Einmal freischalten",
   "membership.switchToPremium": "Zu Premium wechseln",
@@ -1257,6 +1602,7 @@ export const brazilianPortugueseMessages: Messages = {
   "tabs.favorites": "Guardadas",
   "tabs.settings": "Ajustes",
   "common.continue": "Continuar",
+  "common.back": "Voltar",
   "common.continueWithoutName": "Continuar sem nome",
   "common.notNow": "Agora não",
   "common.allowNotifications": "Ativar notificações",
@@ -1265,8 +1611,20 @@ export const brazilianPortugueseMessages: Messages = {
   "common.cancel": "Cancelar",
   "common.reset": "Redefinir",
   "common.refresh": "Atualizar",
-  "onboarding.arrivalBody": "Um lugar silencioso para os pensamentos que merecem ficar.",
+  "onboarding.arrivalBody": "Reserve um momento.",
   "onboarding.arrivalAction": "Começar",
+  "onboarding.emotionalEntryTitle": "A maioria dos pensamentos passa.\nAlguns deveriam ficar.",
+  "onboarding.emotionalEntryBody": "Nem tudo precisa ser alto.\nAlgumas coisas só precisam de um lugar.",
+  "onboarding.emotionalEntryAction": "Entrar",
+  "onboarding.problemTitle": "Sua mente raramente fica em silêncio.",
+  "onboarding.problemBody":
+    "Você rola.\nVai de uma coisa para a outra.\n\nSempre há algo novo —\nmas raramente um momento para permanecer.\n\nE os pensamentos que mais importam?\nEles desaparecem no intervalo.",
+  "onboarding.deeperTruthTitle": "Você não precisa de mais conteúdo.",
+  "onboarding.deeperTruthBody":
+    "Você precisa de um momento.\n\nCinco minutos de quietude.\nUm pensamento que vale guardar.\n\nUm espaço onde você possa desacelerar\ne voltar para si.",
+  "onboarding.solutionTitle": "Este é esse espaço.",
+  "onboarding.solutionBody":
+    "Uma página por dia.\n\nUm pensamento sereno.\nUm lugar para refletir.\nUm momento que pertence só a você.",
   "onboarding.welcomeTitle": "Pare por um instante.",
   "onboarding.welcomeBody": "Há pensamentos que merecem mais do que passar pelo dia.",
   "onboarding.welcomeHero": "Nem tudo o que importa deveria desaparecer.",
@@ -1274,16 +1632,17 @@ export const brazilianPortugueseMessages: Messages = {
   "onboarding.welcomeLineTwo": "Seus pensamentos se perdem no intervalo.",
   "onboarding.welcomeLineThree": "Uma página por dia.\nNada mais.",
   "onboarding.languageTitle": "Escolha seu idioma",
-  "onboarding.languageBody": "Você pode mudar isso quando quiser.",
+  "onboarding.languageBody": "Para que pareça natural para você.",
   "onboarding.languageSearchPlaceholder": "Buscar idioma",
   "onboarding.nameTitle": "Como devemos chamar você?",
-  "onboarding.nameBody": "Este espaço pode se tornar mais pessoal.",
+  "onboarding.nameBody": "Para que este espaço pareça mais seu.",
   "onboarding.namePlaceholder": "Seu nome",
+  "onboarding.nameConfirmationBody": "Este espaço agora é seu.",
   "onboarding.ackBody": "Este espaço pode se tornar realmente seu.",
-  "onboarding.ackCard": "Uma página por dia. Silenciosa o bastante para notar o que continua com você.",
-  "onboarding.preferenceTitle": "Do que você quer mais?",
-  "onboarding.preferenceBody": "Escolha até duas coisas pelas quais você quer se orientar com mais frequência.",
-  "onboarding.preferenceHint": "Escolha até duas.",
+  "onboarding.ackCard": "Um lugar silencioso para os pensamentos que merecem ficar.",
+  "onboarding.preferenceTitle": "Do que você quer mais na sua vida?",
+  "onboarding.preferenceBody": "Não de tudo.\nSó do que importa.",
+  "onboarding.preferenceHint": "Escolha até duas. Você pode mudar isso depois.",
   "onboarding.transitionTitle": "Vamos começar.",
   "onboarding.transitionBody": "Sua primeira página já está pronta.",
   "onboarding.transitionAction": "Continuar",
@@ -1300,11 +1659,11 @@ export const brazilianPortugueseMessages: Messages = {
   "onboarding.choicePremiumBody": "Pensamentos que importam merecem um lugar.\nFaça deste espaço algo que realmente pareça seu.",
   "onboarding.choicePremiumAction": "Começar Premium",
   "onboarding.finishAction": "Abrir Daytri",
-  "onboarding.notificationTimeTitle": "Escolha o horário exato.",
-  "onboarding.notificationTimeBody": "Sua página diária pode chegar exatamente quando isso fizer sentido.",
-  "onboarding.ritualTimeTitle": "Qual é o seu momento?",
-  "onboarding.ritualTimeBody": "Escolha o momento do dia que mais combina com a sua rotina.",
-  "onboarding.ritualTimeHint": "A constância costuma vir quando o momento realmente cabe no dia.",
+  "onboarding.notificationTimeTitle": "Escolha seu momento exato",
+  "onboarding.notificationTimeBody": "Para que combine com o seu ritmo.",
+  "onboarding.ritualTimeTitle": "Quando ela deve chegar?",
+  "onboarding.ritualTimeBody": "Um momento silencioso, só para você.",
+  "onboarding.ritualTimeHint": "Você pode ajustar isso depois.",
   "onboarding.ritualTimeMorningTitle": "Manhã (6-9)",
   "onboarding.ritualTimeMorningBody": "Comece o dia com clareza",
   "onboarding.ritualTimeMiddayTitle": "Meio do dia (11-14)",
@@ -1315,8 +1674,24 @@ export const brazilianPortugueseMessages: Messages = {
   "onboarding.ritualTimeLateBody": "Uma forma calma de encerrar o dia",
   "onboarding.ritualTimeCustomTitle": "Escolher meu próprio horário",
   "onboarding.ritualTimeCustomBody": "Defina um momento que combine de verdade com o seu ritmo",
-  "onboarding.notificationPermissionTitle": "Deixe que ela chegue com delicadeza.",
-  "onboarding.notificationPermissionBody": "Só no horário que você escolher.",
+  "onboarding.notificationPermissionTitle": "Deixe que chegue com delicadeza",
+  "onboarding.notificationPermissionBody":
+    "Não como ruído.\n\nSó como um lembrete sereno\nde que algo significativo está esperando por você.",
+  "onboarding.preparingTitle": "Criando o seu espaço…",
+  "onboarding.preparingSubtitle": "Só um momento.",
+  "onboarding.preparingBody":
+    "Um lugar sereno está sendo preparado para você.\n\nUm que combine com o seu ritmo.\nUm que permaneça com você.",
+  "onboarding.preparingReceiptLabel": "Preparado para você",
+  "onboarding.preparingStatusRhythm": "Encontrando um ritmo mais silencioso...",
+  "onboarding.preparingStatusPage": "Moldando a sua página diária...",
+  "onboarding.preparingStatusThought": "Preparando um pensamento para este momento...",
+  "onboarding.preparingStatusAlmost": "Quase pronto.",
+  "onboarding.preparingSummaryName": "Nome",
+  "onboarding.preparingSummaryFocus": "Foco",
+  "onboarding.preparingSummaryTime": "Hora",
+  "onboarding.preparingSummaryLanguage": "Idioma",
+  "onboarding.firstPageReadyTitle": "Sua primeira página está pronta",
+  "onboarding.firstPageReadyBody": "Reserve um momento.\nNão há pressa.",
   "onboarding.membershipBenefitKeep": "Guarde as páginas que ficam com você",
   "onboarding.membershipBenefitCollections": "Crie coleções pessoais",
   "onboarding.membershipBenefitStyle": "Ajuste cores, tipografia e atmosfera",
@@ -1339,10 +1714,13 @@ export const brazilianPortugueseMessages: Messages = {
   "today.noteLockedBody": "No Freemium, as notas ficam disponíveis para as reflexões que você escolhe guardar. O Premium abre notas mais longas e mais espaço ao redor do que permanece com você.",
   "today.noteLimitHint": "No Freemium, as notas permanecem mais curtas. O Premium abre notas de reflexão mais longas.",
   "today.followUpAction": "Aprofundar impulso",
-  "today.followUpLoading": "Um novo impulso está tomando forma ...",
+  "today.followUpHelper": "Se quiser ir mais fundo, uma nova reflexão pode surgir da sua nota.",
+  "today.followUpLoading": "A reflexão está se aprofundando ...",
   "today.followUpTitle": "Impulsos para aprofundar",
   "today.followUpError": "No momento, não foi possível preparar um novo impulso.",
+  "today.followUpEmpty": "Ainda não foi possível formar um novo impulso a partir desta nota.",
   "today.followUpLimitBody": "O impulso diário com IA já foi usado hoje. O Premium abre mais espaço para novos impulsos.",
+  "today.followUpRetry": "Tentar novamente",
   "today.swipeHint": "Deslize com calma pela página para percorrer os dias guardados.",
   "today.tomorrowHint": "Amanhã traz uma nova página.",
   "today.preparing": "Sua reflexão está sendo preparada.",
@@ -1579,14 +1957,14 @@ export const brazilianPortugueseMessages: Messages = {
   "list.saved": "Guardada",
   "membership.eyebrow": "Assinatura",
   "membership.title": "Faça deste espaço algo realmente seu.",
-  "membership.subtitle": "O Freemium começa com leveza. Premium e Lifelong abrem mais espaço para guardar, organizar e tornar este lugar seu.",
-  "membership.heroLine": "O que importa para você merece ter um lugar.\nCom Premium, este espaço se torna ainda mais seu.",
+  "membership.subtitle": "Nem tudo precisa ficar.\nMas algumas coisas não deveriam desaparecer.",
+  "membership.heroLine": "O Premium transforma uma página diária em um espaço ao qual você pode voltar, moldar e guardar.",
   "membership.premiumIncludedTitle": "O Premium desbloqueia",
   "membership.premiumCardLine": "Mais espaço. Mais profundidade.\nMais do que permanece.",
-  "membership.premiumCardBody": "Pensamentos que importam não deveriam simplesmente desaparecer.\nFaça deste espaço algo ao qual você sempre possa voltar.",
+  "membership.premiumCardBody": "O que começa como um ritual silencioso pode se tornar um lugar ao qual você sempre volta.\nGuarde as páginas que importam e deixe que permaneçam com você.",
   "membership.lifelongCardLine": "Uma vez. Para sempre.",
-  "membership.lifelongCardBody": "Um espaço que pertence a você para sempre.",
-  "membership.lifelongCardNote": "Decida uma vez.\nE tudo continua com você, sem renovação.",
+  "membership.lifelongCardBody": "Para pensamentos e páginas que você sabe que quer guardar.",
+  "membership.lifelongCardNote": "Pague uma vez. Fique com este espaço para sempre.\nSem assinatura. Sem renovação.",
   "membership.freemiumMiniTitle": "Freemium",
   "membership.freemiumMiniBody": "Um começo sereno.\nUma página de cada vez.",
   "membership.benefitKeepClose": "Guarde mais do que realmente importa para você",
@@ -1597,6 +1975,10 @@ export const brazilianPortugueseMessages: Messages = {
   "membership.benefitStyle": "Cores, tipografia e estilo do seu jeito",
   "membership.benefitUnlimited": "Seu espaço pessoal, sem limites",
   "membership.benefitNothingLost": "Tudo fica. Nada se perde",
+  "membership.valueIntro": "O que se abre quando este espaço realmente se torna seu",
+  "membership.premiumTrustNote":
+    "Preço claro. Restaurar compras quando quiser. E, se este ainda não for o momento, você pode continuar no gratuito.",
+  "membership.freeTrustNote": "Você pode começar aqui em silêncio e decidir depois.",
   "membership.trialLineOne": "7 dias grátis para experimentar",
   "membership.trialLineTwo": "Cancele quando quiser",
   "membership.socialProof": "Muitos usuários já guardam aqui as páginas mais importantes.",
@@ -1647,6 +2029,7 @@ export const frenchMessages: Messages = {
   "tabs.favorites": "Favoris",
   "tabs.settings": "Réglages",
   "common.continue": "Continuer",
+  "common.back": "Retour",
   "common.continueWithoutName": "Continuer sans nom",
   "common.notNow": "Pas maintenant",
   "common.allowNotifications": "Autoriser les notifications",
@@ -1655,8 +2038,20 @@ export const frenchMessages: Messages = {
   "common.cancel": "Annuler",
   "common.reset": "Réinitialiser",
   "common.refresh": "Actualiser",
-  "onboarding.arrivalBody": "Un lieu calme pour les pensées qui méritent de rester.",
+  "onboarding.arrivalBody": "Prenez un moment.",
   "onboarding.arrivalAction": "Commencer",
+  "onboarding.emotionalEntryTitle": "La plupart des pensées passent.\nCertaines devraient rester.",
+  "onboarding.emotionalEntryBody": "Tout n'a pas besoin d'être bruyant.\nCertaines choses ont simplement besoin d'un lieu.",
+  "onboarding.emotionalEntryAction": "Entrer",
+  "onboarding.problemTitle": "Votre esprit est rarement calme.",
+  "onboarding.problemBody":
+    "Vous faites défiler.\nVous passez d'une chose à l'autre.\n\nIl y a toujours quelque chose de nouveau —\nmais rarement un moment où demeurer.\n\nEt les pensées qui comptent le plus ?\nElles disparaissent entre les deux.",
+  "onboarding.deeperTruthTitle": "Vous n'avez pas besoin de plus de contenu.",
+  "onboarding.deeperTruthBody":
+    "Vous avez besoin d'un moment.\n\nCinq minutes de calme.\nUne pensée qui mérite d'être gardée.\n\nUn espace où ralentir\net revenir à vous-même.",
+  "onboarding.solutionTitle": "Cet espace, c'est celui-ci.",
+  "onboarding.solutionBody":
+    "Une page par jour.\n\nUne pensée calme.\nUn lieu pour réfléchir.\nUn moment qui n'appartient qu'à vous.",
   "onboarding.welcomeTitle": "Prenez un moment.",
   "onboarding.welcomeBody": "Certaines pensées méritent plus qu'un simple passage.",
   "onboarding.welcomeHero": "Tout ce qui compte ne devrait pas disparaître.",
@@ -1664,16 +2059,17 @@ export const frenchMessages: Messages = {
   "onboarding.welcomeLineTwo": "Vos pensées se perdent entre les deux.",
   "onboarding.welcomeLineThree": "Une page par jour.\nRien de plus.",
   "onboarding.languageTitle": "Choisissez votre langue",
-  "onboarding.languageBody": "Vous pourrez la changer à tout moment.",
+  "onboarding.languageBody": "Pour que cela vous paraisse naturel.",
   "onboarding.languageSearchPlaceholder": "Rechercher une langue",
   "onboarding.nameTitle": "Comment pouvons-nous vous appeler ?",
-  "onboarding.nameBody": "Cet espace peut devenir plus personnel.",
+  "onboarding.nameBody": "Pour que cet espace se sente plus à vous.",
   "onboarding.namePlaceholder": "Votre nom",
+  "onboarding.nameConfirmationBody": "Cet espace est maintenant le vôtre.",
   "onboarding.ackBody": "Cet espace peut vraiment devenir le vôtre.",
-  "onboarding.ackCard": "Une page par jour. Assez calme pour remarquer ce qui reste près de vous.",
-  "onboarding.preferenceTitle": "De quoi voulez-vous davantage ?",
-  "onboarding.preferenceBody": "Choisissez jusqu'à deux choses vers lesquelles vous aimeriez vous orienter plus souvent.",
-  "onboarding.preferenceHint": "Jusqu'à deux choix.",
+  "onboarding.ackCard": "Un lieu calme pour les pensées qui méritent de rester.",
+  "onboarding.preferenceTitle": "Que voulez-vous davantage dans votre vie ?",
+  "onboarding.preferenceBody": "Pas tout.\nSeulement ce qui compte.",
+  "onboarding.preferenceHint": "Choisissez-en deux au maximum. Vous pourrez changer cela plus tard.",
   "onboarding.transitionTitle": "Commençons.",
   "onboarding.transitionBody": "Votre première page est déjà prête.",
   "onboarding.transitionAction": "Continuer",
@@ -1690,11 +2086,11 @@ export const frenchMessages: Messages = {
   "onboarding.choicePremiumBody": "Les pensées qui comptent méritent une place.\nFaites de cet espace quelque chose qui vous appartient vraiment.",
   "onboarding.choicePremiumAction": "Commencer Premium",
   "onboarding.finishAction": "Ouvrir Daytri",
-  "onboarding.notificationTimeTitle": "Choisissez l'heure exacte.",
-  "onboarding.notificationTimeBody": "Votre page quotidienne peut vous rejoindre exactement quand cela vous convient.",
-  "onboarding.ritualTimeTitle": "Quel est votre moment ?",
-  "onboarding.ritualTimeBody": "Choisissez le moment de la journée qui s'accorde le mieux avec votre rythme.",
-  "onboarding.ritualTimeHint": "On reste plus fidèle à ce qui trouve naturellement sa place dans la journée.",
+  "onboarding.notificationTimeTitle": "Choisissez votre moment exact",
+  "onboarding.notificationTimeBody": "Pour qu'il s'accorde à votre rythme.",
+  "onboarding.ritualTimeTitle": "Quand doit-elle arriver ?",
+  "onboarding.ritualTimeBody": "Un moment calme, juste pour vous.",
+  "onboarding.ritualTimeHint": "Vous pourrez toujours ajuster cela plus tard.",
   "onboarding.ritualTimeMorningTitle": "Matin (6-9)",
   "onboarding.ritualTimeMorningBody": "Commencez la journée avec clarté",
   "onboarding.ritualTimeMiddayTitle": "Milieu de journée (11-14)",
@@ -1705,8 +2101,24 @@ export const frenchMessages: Messages = {
   "onboarding.ritualTimeLateBody": "Une manière calme de clore la journée",
   "onboarding.ritualTimeCustomTitle": "Choisir votre propre heure",
   "onboarding.ritualTimeCustomBody": "Choisissez un moment qui épouse vraiment votre rythme",
-  "onboarding.notificationPermissionTitle": "Laissez-la vous rejoindre doucement.",
-  "onboarding.notificationPermissionBody": "Seulement à l'heure que vous choisissez.",
+  "onboarding.notificationPermissionTitle": "Laissez-la arriver doucement",
+  "onboarding.notificationPermissionBody":
+    "Pas comme du bruit.\n\nJuste comme un rappel discret\nque quelque chose d'important vous attend.",
+  "onboarding.preparingTitle": "Création de votre espace…",
+  "onboarding.preparingSubtitle": "Encore un instant.",
+  "onboarding.preparingBody":
+    "Un lieu paisible est en train d'être préparé pour vous.\n\nUn lieu qui s'accorde à votre rythme.\nUn lieu qui reste avec vous.",
+  "onboarding.preparingReceiptLabel": "Préparé pour vous",
+  "onboarding.preparingStatusRhythm": "Trouver un rythme plus paisible...",
+  "onboarding.preparingStatusPage": "Façonner votre page du jour...",
+  "onboarding.preparingStatusThought": "Préparer une pensée pour ce moment...",
+  "onboarding.preparingStatusAlmost": "Presque prêt.",
+  "onboarding.preparingSummaryName": "Nom",
+  "onboarding.preparingSummaryFocus": "Intention",
+  "onboarding.preparingSummaryTime": "Heure",
+  "onboarding.preparingSummaryLanguage": "Langue",
+  "onboarding.firstPageReadyTitle": "Votre première page est prête",
+  "onboarding.firstPageReadyBody": "Prenez un moment.\nIl n'y a rien à précipiter.",
   "onboarding.membershipBenefitKeep": "Gardez les pages qui restent avec vous",
   "onboarding.membershipBenefitCollections": "Créez des collections personnelles",
   "onboarding.membershipBenefitStyle": "Façonnez couleurs, typographie et atmosphère",
@@ -1729,10 +2141,13 @@ export const frenchMessages: Messages = {
   "today.noteLockedBody": "Le mode gratuit garde des notes pour les réflexions que vous choisissez de conserver. Premium ouvre des notes plus longues et plus d'espace autour de ce qui reste avec vous.",
   "today.noteLimitHint": "Le mode gratuit garde des notes plus courtes. Premium ouvre des notes de réflexion plus longues.",
   "today.followUpAction": "Approfondir la réflexion",
-  "today.followUpLoading": "Une impulsion plus calme arrive ...",
+  "today.followUpHelper": "Si vous souhaitez aller plus loin, une autre réflexion peut émerger de votre note.",
+  "today.followUpLoading": "La réflexion s'approfondit ...",
   "today.followUpTitle": "Pistes supplémentaires",
-  "today.followUpError": "Une autre piste n'a pas pu être préparée pour l'instant.",
+  "today.followUpError": "Une réflexion plus profonde n'est pas disponible pour l'instant.",
+  "today.followUpEmpty": "Aucune nouvelle piste n'a pu être formée à partir de cette note pour l'instant.",
   "today.followUpLimitBody": "Le suivi IA du jour est déjà utilisé aujourd'hui. Premium ouvre davantage d'espace pour d'autres pistes.",
+  "today.followUpRetry": "Réessayer",
   "today.swipeHint": "Faites glisser doucement la page pour traverser les jours conservés.",
   "today.tomorrowHint": "Demain apportera une nouvelle page.",
   "today.preparing": "Votre réflexion se prépare.",
@@ -1964,14 +2379,14 @@ export const frenchMessages: Messages = {
   "list.saved": "Gardée",
   "membership.eyebrow": "Abonnement",
   "membership.title": "Faites vraiment de cet espace le vôtre.",
-  "membership.subtitle": "Freemium commence avec douceur. Premium et Lifelong ouvrent davantage d'espace pour garder, organiser et faire réellement de cet endroit le vôtre.",
-  "membership.heroLine": "Ce qui compte pour vous mérite une vraie place.\nAvec Premium, cet espace devient encore plus le vôtre.",
+  "membership.subtitle": "Tout n'a pas besoin de rester.\nMais certaines choses ne devraient pas disparaître.",
+  "membership.heroLine": "Premium transforme une page quotidienne en un espace vers lequel vous pouvez revenir, façonner et garder.",
   "membership.premiumIncludedTitle": "Premium ouvre",
   "membership.premiumCardLine": "Plus d'espace. Plus de profondeur.\nPlus de ce qui demeure.",
-  "membership.premiumCardBody": "Les pensées qui comptent ne devraient pas simplement disparaître.\nFaites de cet espace un lieu vers lequel revenir.",
+  "membership.premiumCardBody": "Ce qui commence comme un rituel calme peut devenir un lieu vers lequel revenir.\nGardez les pages qui comptent et laissez-les rester avec vous.",
   "membership.lifelongCardLine": "Une fois. Pour toujours.",
-  "membership.lifelongCardBody": "Un espace qui vous appartient pour toujours.",
-  "membership.lifelongCardNote": "Décider une fois.\nEt tout reste avec vous, sans renouvellement.",
+  "membership.lifelongCardBody": "Pour les pensées et les pages que vous savez vouloir garder.",
+  "membership.lifelongCardNote": "Payez une fois. Gardez cet espace pour toujours.\nPas d'abonnement. Pas de renouvellement.",
   "membership.freemiumMiniTitle": "Freemium",
   "membership.freemiumMiniBody": "Un début calme.\nUne page à la fois.",
   "membership.benefitKeepClose": "Gardez davantage de ce qui compte pour vous",
@@ -1982,6 +2397,10 @@ export const frenchMessages: Messages = {
   "membership.benefitStyle": "Couleurs, typographie et style selon votre ressenti",
   "membership.benefitUnlimited": "Votre espace personnel, sans limite",
   "membership.benefitNothingLost": "Tout reste. Rien ne se perd",
+  "membership.valueIntro": "Ce qui s'ouvre quand cet espace devient vraiment le vôtre",
+  "membership.premiumTrustNote":
+    "Prix clair. Restaurer les achats à tout moment. Et si ce n'est pas encore le moment, vous pouvez continuer en gratuit.",
+  "membership.freeTrustNote": "Vous pouvez commencer ici doucement et décider plus tard.",
   "membership.trialLineOne": "Essayer gratuitement pendant 7 jours",
   "membership.trialLineTwo": "Annulable à tout moment",
   "membership.socialProof": "Beaucoup d'utilisateurs y gardent déjà leurs pages les plus importantes.",
@@ -2032,6 +2451,7 @@ export const spanishMessages: Messages = {
   "tabs.favorites": "Guardadas",
   "tabs.settings": "Ajustes",
   "common.continue": "Continuar",
+  "common.back": "Volver",
   "common.continueWithoutName": "Continuar sin nombre",
   "common.notNow": "Ahora no",
   "common.allowNotifications": "Permitir notificaciones",
@@ -2040,8 +2460,20 @@ export const spanishMessages: Messages = {
   "common.cancel": "Cancelar",
   "common.reset": "Restablecer",
   "common.refresh": "Actualizar",
-  "onboarding.arrivalBody": "Un lugar sereno para los pensamientos que merecen quedarse.",
+  "onboarding.arrivalBody": "Tómate un momento.",
   "onboarding.arrivalAction": "Empezar",
+  "onboarding.emotionalEntryTitle": "La mayoría de los pensamientos pasan.\nAlgunos deberían quedarse.",
+  "onboarding.emotionalEntryBody": "No todo necesita ser ruidoso.\nAlgunas cosas solo necesitan un lugar.",
+  "onboarding.emotionalEntryAction": "Entrar",
+  "onboarding.problemTitle": "Tu mente rara vez está en calma.",
+  "onboarding.problemBody":
+    "Deslizas.\nPasas de una cosa a la siguiente.\n\nSiempre hay algo nuevo —\npero rara vez un momento para permanecer.\n\n¿Y los pensamientos que más importan?\nDesaparecen entre medias.",
+  "onboarding.deeperTruthTitle": "No necesitas más contenido.",
+  "onboarding.deeperTruthBody":
+    "Necesitas un momento.\n\nCinco minutos de quietud.\nUn pensamiento que merezca sostenerse.\n\nUn espacio donde puedas ir más despacio\ny volver a ti.",
+  "onboarding.solutionTitle": "Este es ese espacio.",
+  "onboarding.solutionBody":
+    "Una página al día.\n\nUn pensamiento sereno.\nUn lugar para reflexionar.\nUn momento que solo te pertenece a ti.",
   "onboarding.welcomeTitle": "Tómate un momento.",
   "onboarding.welcomeBody": "Hay pensamientos que merecen algo más que pasar de largo.",
   "onboarding.welcomeHero": "No todo lo que importa debería desaparecer.",
@@ -2049,16 +2481,17 @@ export const spanishMessages: Messages = {
   "onboarding.welcomeLineTwo": "Tus pensamientos se pierden entre medias.",
   "onboarding.welcomeLineThree": "Una página al día.\nNada más.",
   "onboarding.languageTitle": "Elige tu idioma",
-  "onboarding.languageBody": "Podrás cambiarlo cuando quieras.",
+  "onboarding.languageBody": "Para que se sienta natural para ti.",
   "onboarding.languageSearchPlaceholder": "Buscar idioma",
   "onboarding.nameTitle": "¿Cómo te llamamos?",
-  "onboarding.nameBody": "Este espacio puede sentirse más personal.",
+  "onboarding.nameBody": "Para que este espacio se sienta más tuyo.",
   "onboarding.namePlaceholder": "Tu nombre",
+  "onboarding.nameConfirmationBody": "Este espacio ahora es tuyo.",
   "onboarding.ackBody": "Este espacio puede sentirse realmente tuyo.",
-  "onboarding.ackCard": "Una página al día. Lo bastante serena para notar lo que permanece contigo.",
-  "onboarding.preferenceTitle": "¿De qué quieres más?",
-  "onboarding.preferenceBody": "Elige hasta dos cosas hacia las que te gustaría orientarte más a menudo.",
-  "onboarding.preferenceHint": "Elige hasta dos.",
+  "onboarding.ackCard": "Un lugar sereno para los pensamientos que merecen quedarse.",
+  "onboarding.preferenceTitle": "¿Qué quieres más en tu vida?",
+  "onboarding.preferenceBody": "No de todo.\nSolo de lo que importa.",
+  "onboarding.preferenceHint": "Elige hasta dos. Siempre podrás cambiarlo después.",
   "onboarding.transitionTitle": "Empecemos.",
   "onboarding.transitionBody": "Tu primera página ya está lista.",
   "onboarding.transitionAction": "Continuar",
@@ -2075,11 +2508,11 @@ export const spanishMessages: Messages = {
   "onboarding.choicePremiumBody": "Los pensamientos que importan merecen un lugar.\nHaz de este espacio algo que de verdad sientas tuyo.",
   "onboarding.choicePremiumAction": "Empezar Premium",
   "onboarding.finishAction": "Abrir Daytri",
-  "onboarding.notificationTimeTitle": "Elige la hora exacta.",
-  "onboarding.notificationTimeBody": "Tu página diaria puede llegar exactamente cuando mejor encaje.",
-  "onboarding.ritualTimeTitle": "¿Cuál es tu momento?",
-  "onboarding.ritualTimeBody": "Elige el momento del día que mejor acompañe tu ritmo.",
-  "onboarding.ritualTimeHint": "Es más fácil ser constante cuando el momento encaja de verdad con tu día.",
+  "onboarding.notificationTimeTitle": "Elige tu momento exacto",
+  "onboarding.notificationTimeBody": "Para que encaje con tu ritmo.",
+  "onboarding.ritualTimeTitle": "¿Cuándo debería llegar?",
+  "onboarding.ritualTimeBody": "Un momento sereno, solo para ti.",
+  "onboarding.ritualTimeHint": "Siempre podrás ajustarlo más adelante.",
   "onboarding.ritualTimeMorningTitle": "Mañana (6-9)",
   "onboarding.ritualTimeMorningBody": "Empieza el día con claridad",
   "onboarding.ritualTimeMiddayTitle": "Mediodía (11-14)",
@@ -2090,8 +2523,24 @@ export const spanishMessages: Messages = {
   "onboarding.ritualTimeLateBody": "Una forma tranquila de cerrar el día",
   "onboarding.ritualTimeCustomTitle": "Elige tu propia hora",
   "onboarding.ritualTimeCustomBody": "Fija un momento que de verdad encaje con tu ritmo",
-  "onboarding.notificationPermissionTitle": "Deja que llegue con suavidad.",
-  "onboarding.notificationPermissionBody": "Solo a la hora que tú elijas.",
+  "onboarding.notificationPermissionTitle": "Deja que llegue con suavidad",
+  "onboarding.notificationPermissionBody":
+    "No como ruido.\n\nSolo como un recordatorio sereno\nde que algo significativo te está esperando.",
+  "onboarding.preparingTitle": "Creando tu espacio…",
+  "onboarding.preparingSubtitle": "Solo un momento.",
+  "onboarding.preparingBody":
+    "Se está preparando un lugar sereno para ti.\n\nUno que encaja con tu ritmo.\nUno que se queda contigo.",
+  "onboarding.preparingReceiptLabel": "Preparado para ti",
+  "onboarding.preparingStatusRhythm": "Encontrando un ritmo más sereno...",
+  "onboarding.preparingStatusPage": "Dando forma a tu página diaria...",
+  "onboarding.preparingStatusThought": "Preparando un pensamiento para este momento...",
+  "onboarding.preparingStatusAlmost": "Casi listo.",
+  "onboarding.preparingSummaryName": "Nombre",
+  "onboarding.preparingSummaryFocus": "Enfoque",
+  "onboarding.preparingSummaryTime": "Hora",
+  "onboarding.preparingSummaryLanguage": "Idioma",
+  "onboarding.firstPageReadyTitle": "Tu primera página está lista",
+  "onboarding.firstPageReadyBody": "Tómate un momento.\nNo hace falta apresurarse.",
   "onboarding.membershipBenefitKeep": "Guarda las páginas que se quedan contigo",
   "onboarding.membershipBenefitCollections": "Crea colecciones personales",
   "onboarding.membershipBenefitStyle": "Da forma a colores, tipografía y atmósfera",
@@ -2114,10 +2563,13 @@ export const spanishMessages: Messages = {
   "today.noteLockedBody": "El modo gratuito guarda notas para las reflexiones que eliges conservar. Premium abre notas más largas y más espacio alrededor de lo que se queda contigo.",
   "today.noteLimitHint": "El modo gratuito guarda notas más breves. Premium abre notas de reflexión más largas.",
   "today.followUpAction": "Profundizar la reflexión",
-  "today.followUpLoading": "Está llegando un impulso más sereno ...",
+  "today.followUpHelper": "Si quieres ir más hondo, de tu nota puede surgir otra reflexión.",
+  "today.followUpLoading": "La reflexión se está profundizando ...",
   "today.followUpTitle": "Nuevas pistas",
-  "today.followUpError": "No se pudo preparar otra pista en este momento.",
+  "today.followUpError": "En este momento no se pudo preparar una reflexión más profunda.",
+  "today.followUpEmpty": "Todavía no se pudo formar una nueva pista a partir de esta nota.",
   "today.followUpLimitBody": "El seguimiento diario con IA ya se usó hoy. Premium abre más espacio para nuevas pistas.",
+  "today.followUpRetry": "Intentar de nuevo",
   "today.swipeHint": "Desliza con suavidad por la página para recorrer los días guardados.",
   "today.tomorrowHint": "Mañana traerá una nueva página.",
   "today.preparing": "Tu reflexión se está preparando.",
@@ -2349,14 +2801,14 @@ export const spanishMessages: Messages = {
   "list.saved": "Guardada",
   "membership.eyebrow": "Suscripción",
   "membership.title": "Haz de este espacio algo verdaderamente tuyo.",
-  "membership.subtitle": "Freemium empieza con ligereza. Premium y Lifelong abren más espacio para guardar, ordenar y hacer de este lugar algo verdaderamente tuyo.",
-  "membership.heroLine": "Lo que te importa merece un lugar.\nCon Premium, este espacio se vuelve todavía más tuyo.",
+  "membership.subtitle": "No todo necesita quedarse.\nPero algunas cosas no deberían desaparecer.",
+  "membership.heroLine": "Premium convierte una página diaria en un espacio al que puedes volver, dar forma y guardar.",
   "membership.premiumIncludedTitle": "Premium desbloquea",
   "membership.premiumCardLine": "Más espacio. Más profundidad.\nMás de lo que permanece.",
-  "membership.premiumCardBody": "Los pensamientos que importan no deberían desaparecer sin más.\nHaz de este espacio un lugar al que quieras volver.",
+  "membership.premiumCardBody": "Lo que empieza como un ritual sereno puede convertirse en un lugar al que volver.\nGuarda las páginas que importan y deja que se queden contigo.",
   "membership.lifelongCardLine": "Una vez. Para siempre.",
-  "membership.lifelongCardBody": "Un espacio que te pertenece para siempre.",
-  "membership.lifelongCardNote": "Decidir una vez.\nY que todo permanezca contigo, sin renovación.",
+  "membership.lifelongCardBody": "Para pensamientos y páginas que sabes que quieres conservar.",
+  "membership.lifelongCardNote": "Paga una vez. Conserva este espacio para siempre.\nSin suscripción. Sin renovación.",
   "membership.freemiumMiniTitle": "Freemium",
   "membership.freemiumMiniBody": "Un comienzo sereno.\nUna página cada vez.",
   "membership.benefitKeepClose": "Guarda más de lo que de verdad te importa",
@@ -2367,6 +2819,10 @@ export const spanishMessages: Messages = {
   "membership.benefitStyle": "Colores, tipografía y estilo según tu sentir",
   "membership.benefitUnlimited": "Tu espacio personal, sin límites",
   "membership.benefitNothingLost": "Todo permanece. Nada se pierde",
+  "membership.valueIntro": "Lo que se abre cuando este espacio se vuelve realmente tuyo",
+  "membership.premiumTrustNote":
+    "Precio claro. Puedes restaurar tus compras en cualquier momento. Y si aún no es el momento, puedes seguir en gratis.",
+  "membership.freeTrustNote": "Puedes empezar aquí con calma y decidir más adelante.",
   "membership.trialLineOne": "Prueba gratis durante 7 días",
   "membership.trialLineTwo": "Cancela cuando quieras",
   "membership.socialProof": "Muchos usuarios ya guardan aquí sus páginas más importantes.",
@@ -3378,6 +3834,11 @@ export function getAppStrings(language: SupportedLanguage | null | undefined) {
     }
     return fallbackValue;
   };
+  const interpolate = (template: string, values: Record<string, string>) =>
+    Object.entries(values).reduce(
+      (result, [token, value]) => result.replace(new RegExp(`{{\\s*${token}\\s*}}`, "g"), value),
+      template,
+    );
 
   return {
     languageCode: language ?? "en",
@@ -3414,25 +3875,9 @@ export function getAppStrings(language: SupportedLanguage | null | undefined) {
     membershipStateBody: (plan: "Freemium" | "Premium" | "Lifelong") => membershipStateBodies[plan][resolvedLanguage],
     preferenceLabel: (preference: OnboardingPreference) => preferenceLabels[preference][resolvedLanguage],
     acknowledgementTitle: (name?: string | null) =>
-      resolvedLanguage === "de"
-        ? name?.trim()
-          ? `Schön, dass du da bist, ${name.trim()}.`
-          : "Schön, dass du da bist."
-        : resolvedLanguage === "pt-BR"
-          ? name?.trim()
-            ? `Que bom ter você aqui, ${name.trim()}.`
-            : "Que bom ter você aqui."
-          : resolvedLanguage === "fr"
-            ? name?.trim()
-              ? `Heureux de vous retrouver, ${name.trim()}.`
-              : "Heureux de vous retrouver."
-            : resolvedLanguage === "es"
-              ? name?.trim()
-                ? `Qué bueno tenerte aquí, ${name.trim()}.`
-                : "Qué bueno tenerte aquí."
-          : name?.trim()
-            ? `Good to have you here, ${name.trim()}.`
-            : "Good to have you here.",
+      name?.trim()
+        ? interpolate(translate("onboarding.nameConfirm.title"), { name: name.trim() })
+        : translate("onboarding.nameConfirm.titleFallback"),
     welcomeBack: (name?: string | null) =>
       resolvedLanguage === "de"
         ? name?.trim()

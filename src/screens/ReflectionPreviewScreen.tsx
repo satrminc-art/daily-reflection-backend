@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { AnimatedReveal } from "@/components/onboarding/AnimatedReveal";
 import { useAppContext } from "@/context/AppContext";
 import { useAppStrings } from "@/hooks/useAppStrings";
 import { useTypography } from "@/hooks/useTypography";
@@ -92,16 +93,19 @@ export function ReflectionPreviewScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.primaryText, fontFamily: typography.display }]}>
-            {t("preview.title")}
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.secondaryText, fontFamily: typography.body }]}>
-            {t("preview.subtitle")}
-          </Text>
-        </View>
+        <AnimatedReveal delay={40} distance={10}>
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: colors.primaryText, fontFamily: typography.display }]}>
+              {t("preview.title")}
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.secondaryText, fontFamily: typography.body }]}>
+              {t("preview.subtitle")}
+            </Text>
+          </View>
+        </AnimatedReveal>
 
-        <View style={[styles.previewCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
+        <AnimatedReveal delay={170} duration={420} distance={16}>
+          <View style={[styles.previewCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
           <View style={styles.previewMeta}>
             <Text style={[styles.month, { color: colors.accent, fontFamily: typography.meta }]}>
               {calendarParts.monthDisplayLabel}
@@ -130,12 +134,18 @@ export function ReflectionPreviewScreen({ navigation }: Props) {
               </Text>
             </View>
           ) : null}
-        </View>
+          </View>
+        </AnimatedReveal>
 
-        <View style={styles.footer}>
+        <AnimatedReveal delay={320} duration={380} distance={16}>
+          <View style={styles.footer}>
           <PrimaryButton label={t("preview.primaryAction")} onPress={() => void handleContinue()} />
           <PrimaryButton label={t("preview.secondaryAction")} onPress={() => void handleOpenLater()} variant="ghost" />
-        </View>
+          <Text style={[styles.bridgeText, { color: colors.secondaryText, fontFamily: typography.body }]}>
+            {t("preview.bridge")}
+          </Text>
+          </View>
+        </AnimatedReveal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -147,31 +157,33 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 28,
-    gap: 20,
+    paddingTop: 24,
+    paddingBottom: 30,
+    gap: 24,
   },
   header: {
     alignItems: "center",
-    gap: 8,
-    paddingTop: 4,
+    gap: 10,
+    paddingTop: 12,
   },
   title: {
-    fontSize: 34,
-    lineHeight: 42,
+    fontSize: 33,
+    lineHeight: 40,
     textAlign: "center",
+    maxWidth: 320,
   },
   subtitle: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 25,
     textAlign: "center",
+    maxWidth: 312,
   },
   previewCard: {
     borderWidth: 1,
-    borderRadius: 30,
+    borderRadius: 32,
     paddingHorizontal: 24,
-    paddingTop: 22,
-    paddingBottom: 20,
+    paddingTop: 26,
+    paddingBottom: 26,
   },
   previewMeta: {
     flexDirection: "row",
@@ -182,7 +194,7 @@ const styles = StyleSheet.create({
   month: {
     fontSize: 11,
     lineHeight: 15,
-    letterSpacing: 1.8,
+    letterSpacing: 1.9,
     fontWeight: "700",
   },
   dateBadge: {
@@ -203,22 +215,22 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     letterSpacing: 1.6,
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 18,
   },
   reflectionWrap: {
     width: "100%",
     alignItems: "center",
-    paddingHorizontal: 6,
-    marginBottom: 20,
+    paddingHorizontal: 4,
+    marginBottom: 22,
   },
   reflectionText: {
     width: "100%",
     flexShrink: 1,
     flexWrap: "wrap",
-    fontSize: 36,
-    lineHeight: 48,
+    fontSize: 35,
+    lineHeight: 47,
     textAlign: "center",
-    letterSpacing: -0.35,
+    letterSpacing: -0.4,
   },
   tagWrap: {
     alignItems: "center",
@@ -232,6 +244,13 @@ const styles = StyleSheet.create({
   },
   footer: {
     gap: 10,
-    marginTop: 2,
+    marginTop: 8,
+  },
+  bridgeText: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+    paddingHorizontal: 14,
+    paddingTop: 6,
   },
 });

@@ -19,11 +19,17 @@ export type TabParamList = {
 
 export type OnboardingStackParamList = {
   Welcome: undefined;
+  EmotionalEntry: undefined;
+  Problem: undefined;
+  DeeperTruth: undefined;
+  Solution: undefined;
   Language: undefined;
   Name: undefined;
+  NameConfirmation: undefined;
   Intent: undefined;
   Moment: undefined;
   ExactTime: undefined;
   Notifications: undefined;
-  StartReady: undefined;
+  PreparingSpace: undefined;
+  FirstPageReady: undefined;
 };

@@ -99,17 +99,27 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     setError(null);
 
     try {
+      console.log("[RevenueCat] startup: initializePurchases()");
       const didConfigure = await initializePurchases();
+      console.log("[RevenueCat] startup: initializePurchases() result", {
+        didConfigure,
+        configured: isPurchasesConfigured(),
+      });
       setConfigured(didConfigure || isPurchasesConfigured());
 
       if (!didConfigure && !isPurchasesConfigured()) {
         setOffering(null);
         setCustomerInfo(null);
         setRealTier(null);
+        console.log("[RevenueCat] NOT CONNECTED", {
+          reason: "RevenueCat initialization error",
+        });
         console.info("[SUBSCRIPTION] fallback to freemium");
         return;
       }
 
+      console.log("[RevenueCat] startup: fetchCurrentOffering()");
+      console.log("[RevenueCat] startup: fetchCustomerInfo()");
       const [nextOffering, nextCustomerInfo] = await Promise.all([
         fetchCurrentOffering(),
         fetchCustomerInfo(),
@@ -118,8 +128,22 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setOffering(nextOffering);
       setCustomerInfo(nextCustomerInfo);
       setRealTier(nextCustomerInfo ? deriveMembershipTier(nextCustomerInfo) : null);
+      if (nextOffering) {
+        console.log("[RevenueCat] CONNECTED", {
+          reason: "offerings found",
+          offeringId: nextOffering.identifier,
+        });
+      } else {
+        console.log("[RevenueCat] CONFIGURED BUT EMPTY", {
+          reason: "no offerings found",
+        });
+      }
       console.info("[SUBSCRIPTION] subscription state ready");
     } catch (nextError) {
+      console.log("[RevenueCat] NOT CONNECTED", {
+        reason: "RevenueCat initialization error",
+        error: nextError instanceof Error ? nextError.message : String(nextError),
+      });
       setError(getErrorMessage(nextError, appState.preferredLanguage));
       console.warn("[SUBSCRIPTION] initialization failed, continuing as freemium", nextError);
     } finally {
