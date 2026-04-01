@@ -94,10 +94,14 @@ export async function fetchReflectionFollowUp(
 
   if (!response.ok || !body || !body.success) {
     const errorCode = body && !body.success && isFollowUpErrorCode(body.error) ? body.error : "internal_error";
+    const errorMessage =
+      body && !body.success
+        ? body.message?.trim() || body.error
+        : "AI follow-up request failed.";
 
     throw new ReflectionFollowUpError(
       errorCode,
-      body && !body.success ? body.error : "AI follow-up request failed.",
+      errorMessage,
     );
   }
 

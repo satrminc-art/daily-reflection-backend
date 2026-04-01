@@ -36,7 +36,7 @@ export type ReflectionFollowUpErrorCode =
 
 export interface ReflectionFollowUpErrorResponse {
   success: false;
-  error: string;
+  error: ReflectionFollowUpErrorCode;
   message?: string;
 }
 
