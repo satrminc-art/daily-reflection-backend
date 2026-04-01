@@ -45,6 +45,8 @@ type ValidationResult<T> =
   | { ok: true; data: T }
   | { ok: false; code: ReflectionFollowUpErrorCode; message: string };
 
+type ValidationError = Extract<ValidationResult<ReflectionFollowUpRequest>, { ok: false }>;
+
 function getHeader(req: RouteRequest, headerName: string) {
   const raw = req.headers[headerName];
   if (Array.isArray(raw)) {
@@ -261,120 +263,22 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
   }
 
   const validation = validateRequest(parseBody(req.body));
-  if (!validation.ok) {
-    return sendJson(req, res, {
-      status: 400,
-      reason: "validation",
-      durationMs: Date.now() - startedAt,
-      body: followUpError(validation.code),
-    });
-  }
-
-  const clientIp = getClientIp(req);
-  const userId = validation.data.userId;
-  const noteLength = validation.data.userNote.length;
-
-  console.info(
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      route: ROUTE_PATH,
-      event: "follow_up_request_received",
-      method: req.method ?? null,
-      apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
-      reflectionId: validation.data.reflectionId,
-      noteLength,
-      appLanguage: validation.data.appLanguage,
-      reflectionLanguage: validation.data.reflectionLanguage,
-      fingerprint: buildRequestFingerprint({
-        ip: clientIp,
-        userAgent: getHeader(req, "user-agent"),
-      }),
-      userId: userId ?? null,
-    }),
-  );
-
-  try {
-    const entitlementResolution = await resolveEffectiveEntitlement({
-      clientEntitlement: validation.data.entitlement,
-      userId,
-    });
-
-    const limitResult = await enforceFollowUpLimits({
-      ipIdentifier: clientIp,
-      userIdentifier: userId,
-      entitlement: entitlementResolution.effectiveEntitlement,
-    });
-
-    if (!limitResult.allowed) {
-      return jsonError(
-        req,
-        res,
-        429,
-        limitResult.code,
-        limitResult.code === "daily_limit_reached"
-          ? "The daily AI follow-up limit has been reached."
-          : "Please wait a moment before requesting another AI follow-up.",
-        userId,
-        limitResult.code,
-        Date.now() - startedAt,
-        noteLength,
-      );
-    }
-
-    const result = await generateReflectionFollowUps({
-      ...validation.data,
-      entitlement: entitlementResolution.effectiveEntitlement,
-    });
-
-    const normalizedText = result.text.trim();
-    if (!normalizedText) {
-      return sendJson(req, res, {
-        status: 502,
-        userId,
-        reason: "empty_response",
-        durationMs: Date.now() - startedAt,
-        noteLength,
-        body: followUpError("empty_response"),
-      });
-    }
+  if (validation.ok) {
+    const clientIp = getClientIp(req);
+    const userId = validation.data.userId;
+    const noteLength = validation.data.userNote.length;
 
     console.info(
       JSON.stringify({
         timestamp: new Date().toISOString(),
         route: ROUTE_PATH,
-        event: "follow_up_response_ready",
-        textLength: normalizedText.length,
-        model: result.model,
-        userId: userId ?? null,
-        durationMs: Date.now() - startedAt,
-      }),
-    );
-
-    return sendJson(req, res, {
-      status: 200,
-      userId,
-      reason: entitlementResolution.source,
-      durationMs: Date.now() - startedAt,
-      noteLength,
-      body: followUpSuccess(normalizedText),
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown follow-up error.";
-    const safeReason =
-      message.includes("OPENAI_API_KEY")
-        ? "missing_api_key"
-        : message.toLowerCase().includes("openai")
-          ? "openai_error"
-          : "internal_error";
-
-    console.error(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        route: ROUTE_PATH,
-        reason: safeReason,
-        message,
+        event: "follow_up_request_received",
         method: req.method ?? null,
-        durationMs: Date.now() - startedAt,
+        apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+        reflectionId: validation.data.reflectionId,
+        noteLength,
+        appLanguage: validation.data.appLanguage,
+        reflectionLanguage: validation.data.reflectionLanguage,
         fingerprint: buildRequestFingerprint({
           ip: clientIp,
           userAgent: getHeader(req, "user-agent"),
@@ -383,35 +287,135 @@ export async function reflectionFollowUpRoute(req: RouteRequest, res: RouteRespo
       }),
     );
 
-    if (safeReason === "missing_api_key") {
+    try {
+      const entitlementResolution = await resolveEffectiveEntitlement({
+        clientEntitlement: validation.data.entitlement,
+        userId,
+      });
+
+      const limitResult = await enforceFollowUpLimits({
+        ipIdentifier: clientIp,
+        userIdentifier: userId,
+        entitlement: entitlementResolution.effectiveEntitlement,
+      });
+
+      if (!limitResult.allowed) {
+        return jsonError(
+          req,
+          res,
+          429,
+          limitResult.code,
+          limitResult.code === "daily_limit_reached"
+            ? "The daily AI follow-up limit has been reached."
+            : "Please wait a moment before requesting another AI follow-up.",
+          userId,
+          limitResult.code,
+          Date.now() - startedAt,
+          noteLength,
+        );
+      }
+
+      const result = await generateReflectionFollowUps({
+        ...validation.data,
+        entitlement: entitlementResolution.effectiveEntitlement,
+      });
+
+      const normalizedText = result.text.trim();
+      if (!normalizedText) {
+        return sendJson(req, res, {
+          status: 502,
+          userId,
+          reason: "empty_response",
+          durationMs: Date.now() - startedAt,
+          noteLength,
+          body: followUpError("empty_response"),
+        });
+      }
+
+      console.info(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          route: ROUTE_PATH,
+          event: "follow_up_response_ready",
+          textLength: normalizedText.length,
+          model: result.model,
+          userId: userId ?? null,
+          durationMs: Date.now() - startedAt,
+        }),
+      );
+
+      return sendJson(req, res, {
+        status: 200,
+        userId,
+        reason: entitlementResolution.source,
+        durationMs: Date.now() - startedAt,
+        noteLength,
+        body: followUpSuccess(normalizedText),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown follow-up error.";
+      const safeReason =
+        message.includes("OPENAI_API_KEY")
+          ? "missing_api_key"
+          : message.toLowerCase().includes("openai")
+            ? "openai_error"
+            : "internal_error";
+
+      console.error(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          route: ROUTE_PATH,
+          reason: safeReason,
+          message,
+          method: req.method ?? null,
+          durationMs: Date.now() - startedAt,
+          fingerprint: buildRequestFingerprint({
+            ip: clientIp,
+            userAgent: getHeader(req, "user-agent"),
+          }),
+          userId: userId ?? null,
+        }),
+      );
+
+      if (safeReason === "missing_api_key") {
+        return sendJson(req, res, {
+          status: 500,
+          userId,
+          reason: safeReason,
+          durationMs: Date.now() - startedAt,
+          noteLength,
+          body: followUpError("missing_api_key"),
+        });
+      }
+
+      if (safeReason === "openai_error") {
+        return sendJson(req, res, {
+          status: 502,
+          userId,
+          reason: safeReason,
+          durationMs: Date.now() - startedAt,
+          noteLength,
+          body: followUpError("openai_error"),
+        });
+      }
+
       return sendJson(req, res, {
         status: 500,
         userId,
         reason: safeReason,
         durationMs: Date.now() - startedAt,
         noteLength,
-        body: followUpError("missing_api_key"),
+        body: followUpError("internal_error"),
       });
     }
-
-    if (safeReason === "openai_error") {
-      return sendJson(req, res, {
-        status: 502,
-        userId,
-        reason: safeReason,
-        durationMs: Date.now() - startedAt,
-        noteLength,
-        body: followUpError("openai_error"),
-      });
-    }
+  } else {
+    const validationError: ValidationError = validation;
 
     return sendJson(req, res, {
-      status: 500,
-      userId,
-      reason: safeReason,
+      status: 400,
+      reason: "validation",
       durationMs: Date.now() - startedAt,
-      noteLength,
-      body: followUpError("internal_error"),
+      body: followUpError(validationError.code),
     });
   }
 }
