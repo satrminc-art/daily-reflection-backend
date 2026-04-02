@@ -41,6 +41,9 @@ const defaultPreferences: AppPreferences = {
   pageStyleId: "classic-tearoff",
 };
 
+const SECURE_LOCAL_USER_ID_KEY = "daytri.secure_local_user_id";
+const LEGACY_SECURE_LOCAL_USER_ID_KEY = STORAGE_KEYS.secureLocalUserId;
+
 function createLocalUserId() {
   return `local-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 }
@@ -87,7 +90,19 @@ export const defaultAppState: AppStorageState = {
 
 async function loadSecureLocalUserId(): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(STORAGE_KEYS.secureLocalUserId);
+    const currentValue = await SecureStore.getItemAsync(SECURE_LOCAL_USER_ID_KEY);
+    if (currentValue !== null) {
+      return currentValue;
+    }
+
+    const legacyValue = await SecureStore.getItemAsync(LEGACY_SECURE_LOCAL_USER_ID_KEY);
+    if (legacyValue === null) {
+      return null;
+    }
+
+    await SecureStore.setItemAsync(SECURE_LOCAL_USER_ID_KEY, legacyValue);
+    await SecureStore.deleteItemAsync(LEGACY_SECURE_LOCAL_USER_ID_KEY);
+    return legacyValue;
   } catch (error) {
     console.warn("Failed to read secure local user id", error);
     return null;
@@ -96,7 +111,7 @@ async function loadSecureLocalUserId(): Promise<string | null> {
 
 async function persistSecureLocalUserId(localUserId: string): Promise<void> {
   try {
-    await SecureStore.setItemAsync(STORAGE_KEYS.secureLocalUserId, localUserId);
+    await SecureStore.setItemAsync(SECURE_LOCAL_USER_ID_KEY, localUserId);
   } catch (error) {
     console.warn("Failed to persist secure local user id", error);
   }
@@ -719,6 +734,7 @@ export async function saveAppState(state: AppStorageState): Promise<void> {
 export async function clearAppState(): Promise<void> {
   await Promise.all([
     AsyncStorage.removeItem(STORAGE_KEYS.appState),
-    SecureStore.deleteItemAsync(STORAGE_KEYS.secureLocalUserId),
+    SecureStore.deleteItemAsync(SECURE_LOCAL_USER_ID_KEY),
+    SecureStore.deleteItemAsync(LEGACY_SECURE_LOCAL_USER_ID_KEY),
   ]);
 }

@@ -39,6 +39,7 @@ type StepProps<T extends keyof OnboardingStackParamList> = NativeStackScreenProp
 type ReminderPresetOption = "morning" | "midday" | "evening" | "late" | "custom";
 type NotificationDecision = "pending" | "granted" | "skipped" | "denied";
 type StorySceneTone = "welcome" | "entry" | "problem" | "pivot" | "resolution";
+type StoryAtmosphereVariant = "default" | "quiet";
 
 type OnboardingFlowValue = {
   preferredLanguage: SupportedLanguage | null;
@@ -137,7 +138,13 @@ function StepScreen({
   );
 }
 
-function StoryAtmosphere({ tone }: { tone: StorySceneTone }) {
+function StoryAtmosphere({
+  tone,
+  variant = "default",
+}: {
+  tone: StorySceneTone;
+  variant?: StoryAtmosphereVariant;
+}) {
   const { colorScheme } = useAppContext();
   const colors = palette[colorScheme];
   const floatY = useRef(new Animated.Value(0)).current;
@@ -218,9 +225,12 @@ function StoryAtmosphere({ tone }: { tone: StorySceneTone }) {
             backgroundColor: colors.paperTint,
             opacity: hazeOpacity.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, tone === "welcome" ? 0.42 : 0.3],
+              outputRange: [0, variant === "quiet" ? 0.22 : tone === "welcome" ? 0.42 : 0.3],
             }),
-            transform: [{ translateY: hazeTranslateY }, { scale: tone === "resolution" ? 1.06 : 1 }],
+            transform: [
+              { translateY: hazeTranslateY },
+              { scale: variant === "quiet" ? 0.96 : tone === "resolution" ? 1.06 : 1 },
+            ],
           },
         ]}
       />
@@ -231,8 +241,11 @@ function StoryAtmosphere({ tone }: { tone: StorySceneTone }) {
           {
             backgroundColor: colors.surface,
             borderColor: colors.border,
-            opacity: tone === "problem" ? 0.38 : 0.3,
-            transform: [{ translateY: primaryTranslateY }, { rotate: tone === "entry" ? "-5deg" : "-3deg" }],
+            opacity: variant === "quiet" ? 0.14 : tone === "problem" ? 0.38 : 0.3,
+            transform: [
+              { translateY: primaryTranslateY },
+              { rotate: variant === "quiet" ? "-1deg" : tone === "entry" ? "-5deg" : "-3deg" },
+            ],
           },
         ]}
       />
@@ -243,8 +256,11 @@ function StoryAtmosphere({ tone }: { tone: StorySceneTone }) {
           {
             backgroundColor: colors.elevatedSurface,
             borderColor: colors.borderStrong,
-            opacity: tone === "pivot" ? 0.5 : 0.4,
-            transform: [{ translateY: secondaryTranslateY }, { rotate: tone === "resolution" ? "5deg" : "3deg" }],
+            opacity: variant === "quiet" ? 0.08 : tone === "pivot" ? 0.5 : 0.4,
+            transform: [
+              { translateY: secondaryTranslateY },
+              { rotate: variant === "quiet" ? "1deg" : tone === "resolution" ? "5deg" : "3deg" },
+            ],
           },
         ]}
       />
@@ -260,6 +276,16 @@ function StoryScreen({
   tone = "entry",
   showBack = false,
   onBack,
+  atmosphereVariant = "default",
+  contentStyle,
+  titleStyle,
+  titleWrapStyle,
+  narrativeStyle,
+  bodyContainerStyle,
+  textStyle,
+  buttonStyle,
+  dividerWidth = 62,
+  accentStyle,
 }: {
   title: string;
   bodySegments: string[];
@@ -268,6 +294,16 @@ function StoryScreen({
   tone?: StorySceneTone;
   showBack?: boolean;
   onBack?: () => void;
+  atmosphereVariant?: StoryAtmosphereVariant;
+  contentStyle?: object;
+  titleStyle?: object;
+  titleWrapStyle?: object;
+  narrativeStyle?: object;
+  bodyContainerStyle?: object;
+  textStyle?: object;
+  buttonStyle?: object;
+  dividerWidth?: number;
+  accentStyle?: object;
 }) {
   const { colorScheme } = useAppContext();
   const colors = palette[colorScheme];
@@ -277,10 +313,10 @@ function StoryScreen({
   return (
     <StepScreen showBack={showBack} onBack={onBack}>
       <View style={styles.storyScene}>
-        <StoryAtmosphere tone={tone} />
+        <StoryAtmosphere tone={tone} variant={atmosphereVariant} />
         <OnboardingScaffold
         title={
-          <View style={styles.storyTitleWrap}>
+          <View style={[styles.storyTitleWrap, titleWrapStyle]}>
             <StaggeredRevealText
               lines={titleLines}
               lineHeight={44}
@@ -290,6 +326,7 @@ function StoryScreen({
               textStyle={[
                 styles.storyTitle,
                 tone === "problem" ? styles.storyTitleTight : null,
+                titleStyle,
                 {
                   color: colors.primaryText,
                   fontFamily: typography.display,
@@ -299,15 +336,15 @@ function StoryScreen({
           </View>
         }
           align="center"
-          contentStyle={styles.storyContent}
+          contentStyle={[styles.storyContent, contentStyle]}
           bodyStyle={styles.storyBody}
           disableBodyReveal
           footerRevealDelay={(tone === "pivot" ? 1160 : 980) + bodySegments.length * 220}
-          footer={<PrimaryButton label={actionLabel} onPress={onPress} />}
+          footer={<PrimaryButton label={actionLabel} onPress={onPress} style={buttonStyle} />}
         >
-          <View style={styles.storyNarrative}>
-          <AnimatedDivider delay={tone === "welcome" ? 360 : 430} width={62} style={styles.storyDivider} />
-          <View style={styles.storyBody}>
+          <View style={[styles.storyNarrative, narrativeStyle]}>
+          <AnimatedDivider delay={tone === "welcome" ? 360 : 430} width={dividerWidth} style={styles.storyDivider} />
+          <View style={[styles.storyBody, bodyContainerStyle]}>
             {bodySegments.map((segment, index) => (
               <AnimatedReveal
                 key={`${segment}-${index}`}
@@ -324,6 +361,7 @@ function StoryScreen({
                   textStyle={[
                     styles.storyText,
                     index === 0 && tone === "resolution" ? styles.storyLeadText : null,
+                    textStyle,
                     {
                       color: colors.secondaryText,
                       fontFamily: typography.body,
@@ -336,7 +374,7 @@ function StoryScreen({
         </View>
           <View style={styles.storyAccentWrap}>
             <AnimatedReveal delay={(tone === "pivot" ? 920 : 760) + bodySegments.length * 220} duration={520} distance={10}>
-              <View style={[styles.storyAccent, { backgroundColor: colors.accent }]} />
+              <View style={[styles.storyAccent, accentStyle, { backgroundColor: colors.accent }]} />
             </AnimatedReveal>
           </View>
         </OnboardingScaffold>
@@ -446,6 +484,16 @@ function ProblemScreen({ navigation }: StepProps<"Problem">) {
       bodySegments={beats}
       actionLabel={t("onboarding.problem.cta")}
       tone="problem"
+      atmosphereVariant="quiet"
+      contentStyle={styles.focusedStoryContent}
+      titleWrapStyle={styles.focusedTitleWrap}
+      titleStyle={styles.focusedProblemTitle}
+      narrativeStyle={styles.focusedNarrative}
+      bodyContainerStyle={styles.focusedBodyPanel}
+      textStyle={styles.focusedStoryText}
+      buttonStyle={styles.focusedButton}
+      dividerWidth={80}
+      accentStyle={styles.focusedAccent}
       showBack
       onBack={() => navigation.goBack()}
       onPress={() => {
@@ -467,6 +515,16 @@ function DeeperTruthScreen({ navigation }: StepProps<"DeeperTruth">) {
       bodySegments={beats}
       actionLabel={t("onboarding.deeperTruth.cta")}
       tone="pivot"
+      atmosphereVariant="quiet"
+      contentStyle={styles.focusedStoryContent}
+      titleWrapStyle={styles.focusedTitleWrap}
+      titleStyle={styles.focusedPivotTitle}
+      narrativeStyle={styles.focusedNarrative}
+      bodyContainerStyle={styles.focusedBodyPanel}
+      textStyle={styles.focusedStoryText}
+      buttonStyle={styles.focusedButton}
+      dividerWidth={72}
+      accentStyle={styles.focusedAccent}
       showBack
       onBack={() => navigation.goBack()}
       onPress={() => {
@@ -1274,10 +1332,16 @@ const styles = StyleSheet.create({
   storyContent: {
     paddingTop: 44,
   },
+  focusedStoryContent: {
+    paddingTop: 18,
+  },
   storyTitleWrap: {
     width: "100%",
     alignItems: "center",
     gap: 4,
+  },
+  focusedTitleWrap: {
+    marginBottom: 4,
   },
   storyTitle: {
     fontSize: 34,
@@ -1293,6 +1357,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 18,
   },
+  focusedNarrative: {
+    gap: 16,
+  },
   storyDivider: {
     marginTop: 4,
   },
@@ -1300,11 +1367,39 @@ const styles = StyleSheet.create({
     gap: 12,
     alignItems: "center",
   },
+  focusedBodyPanel: {
+    width: "100%",
+    maxWidth: 324,
+    paddingHorizontal: 22,
+    paddingVertical: 20,
+    borderRadius: 26,
+    backgroundColor: "rgba(255, 252, 247, 0.66)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(118, 97, 77, 0.12)",
+    gap: 14,
+  },
   storyText: {
     fontSize: 16,
     lineHeight: 27,
     textAlign: "center",
     maxWidth: 304,
+  },
+  focusedStoryText: {
+    fontSize: 15,
+    lineHeight: 25,
+    maxWidth: 272,
+  },
+  focusedProblemTitle: {
+    fontSize: 33,
+    lineHeight: 41,
+    maxWidth: 240,
+    letterSpacing: -0.9,
+  },
+  focusedPivotTitle: {
+    fontSize: 33,
+    lineHeight: 41,
+    maxWidth: 244,
+    letterSpacing: -0.9,
   },
   storyLeadText: {
     fontSize: 18,
@@ -1321,6 +1416,14 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 999,
     opacity: 0.62,
+  },
+  focusedAccent: {
+    width: 74,
+    opacity: 0.48,
+  },
+  focusedButton: {
+    minWidth: 220,
+    alignSelf: "center",
   },
   searchCard: {
     borderWidth: 1,

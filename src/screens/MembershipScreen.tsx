@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -24,6 +23,7 @@ import { trackAppEvent } from "@/services/analytics";
 import { findLifelongPackage, getCurrentOffering } from "@/services/purchases";
 import { PurchaseTarget } from "@/types/membership";
 import type { PurchasesPackage } from "@/types/purchases";
+import { getSubscriptionPriceFallbacks, resolveSubscriptionDisplayPrice } from "@/utils/subscriptionPricing";
 import { palette } from "@/utils/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Membership">;
@@ -33,7 +33,7 @@ type PremiumPlanOption = {
   id: PremiumBillingPlan;
   title: string;
   note: string;
-  price: string | null;
+  price: string;
   package: PurchasesPackage | null;
   recommended?: boolean;
 };
@@ -89,6 +89,10 @@ export function MembershipScreen({ navigation }: Props) {
   }, [subscription.offering]);
 
   const isLaunchOffer = !appState.hasSeenInitialPremiumOffer;
+  const pricingFallbacks = useMemo(
+    () => getSubscriptionPriceFallbacks(appState.preferredLanguage),
+    [appState.preferredLanguage],
+  );
   const currentPlan = membership.currentPlanLabel;
   const isPremium = currentPlan === "Premium";
   const isLifelong = currentPlan === "Lifelong";
@@ -127,19 +131,25 @@ export function MembershipScreen({ navigation }: Props) {
         id: "monthly",
         title: t("membership.planMonthly"),
         note: t("membership.planMonthlyNote"),
-        price: formatPlanPrice(monthlyPackage?.product.priceString ?? null, t("membership.priceSuffixMonthly")),
+        price: resolveSubscriptionDisplayPrice({
+          localizedPrice: formatPlanPrice(monthlyPackage?.product.priceString ?? null, t("membership.priceSuffixMonthly")),
+          fallbackPrice: pricingFallbacks.monthly,
+        }),
         package: monthlyPackage,
       },
       {
         id: "yearly",
         title: t("membership.planYearly"),
         note: t("membership.planYearlyNote"),
-        price: formatPlanPrice(yearlyPackage?.product.priceString ?? null, t("membership.priceSuffixYearly")),
+        price: resolveSubscriptionDisplayPrice({
+          localizedPrice: formatPlanPrice(yearlyPackage?.product.priceString ?? null, t("membership.priceSuffixYearly")),
+          fallbackPrice: pricingFallbacks.yearly,
+        }),
         package: yearlyPackage,
         recommended: true,
       },
     ],
-    [monthlyPackage, t, yearlyPackage],
+    [monthlyPackage, pricingFallbacks.monthly, pricingFallbacks.yearly, t, yearlyPackage],
   );
 
   const selectedPremiumOption =
@@ -150,6 +160,8 @@ export function MembershipScreen({ navigation }: Props) {
   const hasPremiumStoreOption = premiumPlanOptions.some((option) => Boolean(option.package));
   const hasAnyStorePlan = hasPremiumStoreOption || Boolean(lifelongPackage);
   const selectedPremiumPackage = selectedPremiumOption?.package ?? null;
+  const shouldShowStoreUnavailable = offeringLoaded && subscription.configured && !hasAnyStorePlan;
+  const shouldHideUnstableStoreStates = !subscription.configured || !offeringLoaded || !hasAnyStorePlan;
 
   const premiumButtonLabel = useMemo(() => {
     if (purchaseLoading === "premium") {
@@ -293,12 +305,6 @@ export function MembershipScreen({ navigation }: Props) {
           </View>
         </AnimatedReveal>
 
-        {(!offeringLoaded || subscription.loading) && (
-          <View style={[styles.loadingCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <ActivityIndicator color={colors.primaryText} />
-          </View>
-        )}
-
         <AnimatedReveal delay={160} duration={420} distance={14}>
           <View
             style={[
@@ -368,7 +374,7 @@ export function MembershipScreen({ navigation }: Props) {
                     {option.recommended ? <PlanBadge label={t("membership.bestValue")} subtle /> : null}
                   </View>
                   <Text style={[styles.planOptionPrice, { color: colors.primaryText, fontFamily: typography.action }]}>
-                    {option.price ?? "—"}
+                    {option.price}
                   </Text>
                   <Text style={[styles.planOptionNote, { color: colors.secondaryText, fontFamily: typography.body }]}>
                     {option.note}
@@ -388,12 +394,12 @@ export function MembershipScreen({ navigation }: Props) {
             <Text style={[styles.microcopySecondary, { color: colors.secondaryText, fontFamily: typography.body }]}>
               {t("membership.premiumTrustNote")}
             </Text>
-            <Text style={[styles.microcopySecondary, { color: colors.tertiaryText, fontFamily: typography.body }]}>
-              {t("membership.subscriptionRenewalNote")}
-            </Text>
           </View>
 
           <PrimaryButton label={premiumButtonLabel} onPress={() => void handlePremiumSelection()} disabled={premiumDisabled} style={styles.primaryButton} />
+          <Text style={[styles.legalText, { color: colors.tertiaryText, fontFamily: typography.body }]}>
+            {t("membership.subscriptionLegalFull")}
+          </Text>
           </View>
         </AnimatedReveal>
 
@@ -420,7 +426,10 @@ export function MembershipScreen({ navigation }: Props) {
           </Text>
 
           <Text style={[styles.lifelongPrice, { color: colors.primaryText, fontFamily: typography.action }]}>
-            {formatPlanPrice(lifelongPackage?.product.priceString ?? null, t("membership.priceSuffixLifetime")) ?? "—"}
+            {resolveSubscriptionDisplayPrice({
+              localizedPrice: formatPlanPrice(lifelongPackage?.product.priceString ?? null, t("membership.priceSuffixLifetime")),
+              fallbackPrice: pricingFallbacks.lifetime,
+            })}
           </Text>
           <Text style={[styles.lifelongFootnote, { color: colors.tertiaryText, fontFamily: typography.body }]}>
             {t("membership.oneTimePurchaseNote")}
@@ -438,7 +447,7 @@ export function MembershipScreen({ navigation }: Props) {
           </View>
         </AnimatedReveal>
 
-        {!hasAnyStorePlan && offeringLoaded ? (
+        {shouldShowStoreUnavailable && !shouldHideUnstableStoreStates ? (
           <View style={[styles.errorCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.errorTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
               {t("membership.errorTitle")}
@@ -468,15 +477,10 @@ export function MembershipScreen({ navigation }: Props) {
             }}
             style={styles.freeButton}
           />
-          <Pressable onPress={() => void handleRestore()} hitSlop={8} style={styles.restoreWrap}>
-            <Text style={[styles.restoreText, { color: colors.secondaryText, fontFamily: typography.body }]}>
-              {isLaunchOffer ? t("onboarding.paywall.restore") : t("settings.restorePurchases")}
-            </Text>
-          </Pressable>
           </View>
         </AnimatedReveal>
 
-        {subscription.error && hasAnyStorePlan ? (
+        {subscription.error && hasAnyStorePlan && !shouldHideUnstableStoreStates ? (
           <View style={[styles.errorCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.errorTitle, { color: colors.primaryText, fontFamily: typography.display }]}>
               {t("membership.errorTitle")}
@@ -486,6 +490,12 @@ export function MembershipScreen({ navigation }: Props) {
             </Text>
           </View>
         ) : null}
+
+        <Pressable onPress={() => void handleRestore()} hitSlop={8} style={styles.restoreWrap}>
+          <Text style={[styles.restoreText, { color: colors.secondaryText, fontFamily: typography.body }]}>
+            {isLaunchOffer ? t("onboarding.paywall.restore") : t("settings.restorePurchases")}
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -524,14 +534,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     maxWidth: 324,
-  },
-  loadingCard: {
-    borderWidth: 1,
-    borderRadius: 24,
-    paddingVertical: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 18,
   },
   premiumCard: {
     borderWidth: 1,
@@ -651,6 +653,11 @@ const styles = StyleSheet.create({
   primaryButton: {
     alignSelf: "stretch",
   },
+  legalText: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 12,
+  },
   lifelongCard: {
     borderWidth: 1,
     borderRadius: 26,
@@ -730,9 +737,9 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   restoreWrap: {
-    alignSelf: "flex-start",
-    paddingTop: 6,
-    paddingBottom: 2,
+    alignSelf: "center",
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   restoreText: {
     fontSize: 14,

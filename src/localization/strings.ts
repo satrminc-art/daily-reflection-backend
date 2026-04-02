@@ -512,7 +512,9 @@ export type TranslationKey =
   | "membership.priceSuffixMonthly"
   | "membership.priceSuffixYearly"
   | "membership.priceSuffixLifetime"
+  | "membership.priceLoading"
   | "membership.subscriptionRenewalNote"
+  | "membership.subscriptionLegalFull"
   | "membership.oneTimePurchaseNote"
   | "membership.storeUnavailableNote"
   | "membership.choosePremium"
@@ -546,11 +548,11 @@ export const englishMessages: Messages = {
   "onboarding.entry.title": "Most thoughts pass.\nSome should stay.",
   "onboarding.entry.text": "Not everything needs to be loud.\nSome things just need a place.",
   "onboarding.entry.cta": "Enter",
-  "onboarding.problem.title": "Your mind is rarely quiet.",
+  "onboarding.problem.title": "Your mind\nrarely rests.",
   "onboarding.problem.text":
-    "You scroll.\nYou move from one thing to the next.\n\nThere is always something new —\nbut rarely a moment to stay.\n\nAnd the thoughts that matter most?\nThey disappear in between.",
+    "You scroll.\nYou move from one thing to the next.\n\nThere is always something new —\nbut rarely a moment to stay.",
   "onboarding.problem.cta": "Continue",
-  "onboarding.deeperTruth.title": "You do not need more content.",
+  "onboarding.deeperTruth.title": "You do not\nneed more.",
   "onboarding.deeperTruth.text":
     "You need a moment.\n\nFive minutes of stillness.\nOne thought worth holding.\n\nA space where you can slow down\nand return to yourself.",
   "onboarding.deeperTruth.cta": "Continue",
@@ -1046,7 +1048,10 @@ export const englishMessages: Messages = {
   "membership.priceSuffixMonthly": "/ month",
   "membership.priceSuffixYearly": "/ year",
   "membership.priceSuffixLifetime": "one-time",
+  "membership.priceLoading": "Loading price...",
   "membership.subscriptionRenewalNote": "Subscriptions renew automatically until canceled.",
+  "membership.subscriptionLegalFull":
+    "Payment will be charged to your Apple Account. Your subscription renews automatically unless it is canceled at least 24 hours before the end of the current period.",
   "membership.oneTimePurchaseNote": "One-time purchase. No renewal.",
   "membership.storeUnavailableNote": "Store pricing is quiet for the moment. The screen stays available and purchases can return when the connection is ready.",
   "membership.choosePremium": "Start premium",
@@ -1075,11 +1080,11 @@ export const germanMessages: Messages = {
   "onboarding.entry.title": "Die meisten Gedanken vergehen.\nEinige sollten bleiben.",
   "onboarding.entry.text": "Nicht alles muss laut sein.\nManches braucht einfach einen Ort.",
   "onboarding.entry.cta": "Eintreten",
-  "onboarding.problem.title": "Dein Kopf ist selten still.",
+  "onboarding.problem.title": "Dein Kopf\nkommt selten zur Ruhe.",
   "onboarding.problem.text":
-    "Du scrollst.\nDu springst von einem zum nächsten.\n\nEs gibt immer etwas Neues —\naber selten einen Moment zum Bleiben.\n\nUnd die Gedanken, die wirklich zählen?\nSie verschwinden dazwischen.",
+    "Du scrollst.\nDu springst von einem zum nächsten.\n\nEs gibt immer etwas Neues —\naber selten einen Moment zum Bleiben.",
   "onboarding.problem.cta": "Weiter",
-  "onboarding.deeperTruth.title": "Du brauchst nicht mehr Inhalte.",
+  "onboarding.deeperTruth.title": "Du brauchst\nnicht mehr.",
   "onboarding.deeperTruth.text":
     "Du brauchst einen Moment.\n\nFünf Minuten Stille.\nEinen Gedanken, der es wert ist.\n\nEinen Raum, in dem du langsamer wirst\nund wieder bei dir ankommst.",
   "onboarding.deeperTruth.cta": "Weiter",
@@ -1575,7 +1580,10 @@ export const germanMessages: Messages = {
   "membership.priceSuffixMonthly": "/ Monat",
   "membership.priceSuffixYearly": "/ Jahr",
   "membership.priceSuffixLifetime": "einmalig",
+  "membership.priceLoading": "Preis wird geladen...",
   "membership.subscriptionRenewalNote": "Abonnements verlängern sich automatisch, bis du kündigst.",
+  "membership.subscriptionLegalFull":
+    "Zahlung wird über dein Apple-Konto abgewickelt. Abo verlängert sich automatisch, sofern es nicht mindestens 24 Stunden vor Ablauf gekündigt wird.",
   "membership.oneTimePurchaseNote": "Einmaliger Kauf. Keine Verlängerung.",
   "membership.storeUnavailableNote": "Store-Preise sind gerade still. Die Fläche bleibt verfügbar, und Käufe können zurückkehren, sobald die Verbindung wieder bereit ist.",
   "membership.choosePremium": "Premium starten",
