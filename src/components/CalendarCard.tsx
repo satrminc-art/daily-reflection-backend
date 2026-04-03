@@ -65,7 +65,7 @@ export const CalendarCard = forwardRef<View, Props>(
     fontSize: questionSizeByVariant[pageStyle.fullVariant],
     lineHeight: questionLineHeightByVariant[pageStyle.fullVariant],
     fontFamily: typography.display,
-    letterSpacing: Platform.OS === "android" ? -0.3 : -0.6,
+    letterSpacing: -0.5,
   } as const;
 
   function renderClassicLayout() {

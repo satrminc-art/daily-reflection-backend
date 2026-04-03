@@ -53,7 +53,7 @@ export function ScreenContainer({ children, scroll = false, contentContainerStyl
       <SafeAreaView style={styles.fill} edges={["top", "left", "right", "bottom"]}>
         <KeyboardAvoidingView
           style={styles.fill}
-          behavior={Platform.select({ ios: "padding", android: undefined })}
+          behavior={Platform.select({ ios: "padding", android: "height" })}
         >
           {content}
           {overlay ? <View pointerEvents="box-none" style={styles.overlay}>{overlay}</View> : null}

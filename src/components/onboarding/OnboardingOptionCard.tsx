@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppContext } from "@/context/AppContext";
 import { useTypography } from "@/hooks/useTypography";
 import { palette } from "@/utils/theme";
@@ -65,6 +65,14 @@ export function OnboardingOptionCard({
     <Animated.View style={{ transform: [{ scale: selectedScale }] }}>
       <Pressable
         onPress={onPress}
+        android_ripple={
+          Platform.OS === "android"
+            ? {
+                color: colors.accentSoft,
+                borderless: false,
+              }
+            : undefined
+        }
         accessibilityRole="button"
         accessibilityState={{ selected }}
         style={({ pressed }) => [

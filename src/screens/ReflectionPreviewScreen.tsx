@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { SecondaryButton } from "@/components/SecondaryButton";
 import { AnimatedReveal } from "@/components/onboarding/AnimatedReveal";
 import { useAppContext } from "@/context/AppContext";
 import { useAppStrings } from "@/hooks/useAppStrings";
@@ -140,7 +141,13 @@ export function ReflectionPreviewScreen({ navigation }: Props) {
         <AnimatedReveal delay={320} duration={380} distance={16}>
           <View style={styles.footer}>
           <PrimaryButton label={t("preview.primaryAction")} onPress={() => void handleContinue()} />
-          <PrimaryButton label={t("preview.secondaryAction")} onPress={() => void handleOpenLater()} variant="ghost" />
+          <View style={[styles.secondaryDivider, { backgroundColor: colors.border }]} />
+          <SecondaryButton
+            label={t("preview.secondaryAction")}
+            onPress={() => void handleOpenLater()}
+            variant="text"
+            style={styles.secondaryActionButton}
+          />
           <Text style={[styles.bridgeText, { color: colors.secondaryText, fontFamily: typography.body }]}>
             {t("preview.bridge")}
           </Text>
@@ -243,8 +250,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   footer: {
-    gap: 10,
-    marginTop: 8,
+    gap: 9,
+    marginTop: 10,
+    alignItems: "center",
+  },
+  secondaryDivider: {
+    width: 32,
+    height: StyleSheet.hairlineWidth,
+    opacity: 0.78,
+    marginTop: 1,
+    marginBottom: 1,
+  },
+  secondaryActionButton: {
+    minHeight: 36,
   },
   bridgeText: {
     fontSize: 14,

@@ -15,6 +15,7 @@ import { CalendarCard } from "@/components/CalendarCard";
 import { EditorialHeader } from "@/components/EditorialHeader";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ReflectionNoteCard } from "@/components/ReflectionNoteCard";
+import { SecondaryButton } from "@/components/SecondaryButton";
 import { UpgradeCard } from "@/components/premium/UpgradeCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAppContext } from "@/context/AppContext";
@@ -528,14 +529,13 @@ export function TodayScreen() {
               console.warn("Failed to update kept reflection", error);
             });
           }}
-          variant="secondary"
-          style={styles.actionButton}
+          style={styles.actionButtonPrimary}
         />
-        <PrimaryButton
+        <SecondaryButton
           label={isSharing ? t("common.preparing") : t("today.share")}
           onPress={handleShare}
-          variant="ghost"
-          style={styles.actionButton}
+          variant="soft"
+          style={styles.actionButtonSecondary}
           disabled={isSharing}
         />
       </View>
@@ -586,10 +586,10 @@ export function TodayScreen() {
                 </Text>
                 <View style={styles.overlayFooter}>
                   <PrimaryButton label={t("today.lateOpenPrimary")} onPress={handleLateOpenContinue} />
-                  <PrimaryButton
+                  <SecondaryButton
                     label={t("today.lateOpenSecondary")}
                     onPress={handleLateOpenLater}
-                    variant="ghost"
+                    variant="text"
                   />
                 </View>
               </>
@@ -604,7 +604,11 @@ export function TodayScreen() {
                 </Text>
                 <View style={styles.overlayFooter}>
                   <PrimaryButton label={savePrompt.cta} onPress={() => void handleUpgradeInviteOpen()} />
-                  <PrimaryButton label={savePrompt.secondary ?? t("common.notNow")} onPress={() => void handleUpgradeInviteDismiss()} variant="ghost" />
+                  <SecondaryButton
+                    label={savePrompt.secondary ?? t("common.notNow")}
+                    onPress={() => void handleUpgradeInviteDismiss()}
+                    variant="text"
+                  />
                 </View>
               </>
             ) : null}
@@ -656,7 +660,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 33,
     textAlign: "center",
-    letterSpacing: Platform.OS === "android" ? -0.2 : -0.35,
+    letterSpacing: -0.35,
   },
   captionRow: {
     gap: 8,
@@ -667,7 +671,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
-    letterSpacing: Platform.OS === "android" ? 1.1 : 1.4,
+    letterSpacing: 1.4,
   },
   captionHint: {
     fontSize: 13,
@@ -678,12 +682,23 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 10,
+    gap: 12,
     marginBottom: 12,
+    width: "100%",
+    alignSelf: "center",
+    maxWidth: 348,
   },
-  actionButton: {
-    minWidth: 112,
-    width: "auto",
+  actionButtonPrimary: {
+    minWidth: 136,
+    flexGrow: 1.08,
+    flexBasis: 0,
+    maxWidth: 196,
+  },
+  actionButtonSecondary: {
+    minWidth: 128,
+    flexGrow: 0.92,
+    flexBasis: 0,
+    maxWidth: 172,
   },
   helperText: {
     fontSize: 13,
@@ -749,7 +764,7 @@ const styles = StyleSheet.create({
     fontSize: 31,
     lineHeight: 39,
     textAlign: "center",
-    letterSpacing: Platform.OS === "android" ? -0.22 : -0.4,
+    letterSpacing: -0.4,
   },
   overlayBody: {
     fontSize: 15,

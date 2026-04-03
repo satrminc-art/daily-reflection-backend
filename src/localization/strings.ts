@@ -21,6 +21,7 @@ export type TranslationKey =
   | "common.preparing"
   | "common.searchLanguage"
   | "common.cancel"
+  | "common.apply"
   | "common.reset"
   | "common.refresh"
   | "brand.quietPlace"
@@ -618,6 +619,7 @@ export const englishMessages: Messages = {
   "common.preparing": "Preparing...",
   "common.searchLanguage": "Search language",
   "common.cancel": "Cancel",
+  "common.apply": "Apply",
   "common.reset": "Reset",
   "common.refresh": "Refresh",
   "onboarding.arrivalBody": "Take a moment.",
@@ -1146,6 +1148,7 @@ export const germanMessages: Messages = {
   "common.preparing": "Wird still vorbereitet...",
   "common.searchLanguage": "Sprache suchen",
   "common.cancel": "Abbrechen",
+  "common.apply": "Übernehmen",
   "common.reset": "Zurücksetzen",
   "common.refresh": "Aktualisieren",
   "onboarding.arrivalBody": "Nimm dir einen Moment.",
@@ -1617,6 +1620,7 @@ export const brazilianPortugueseMessages: Messages = {
   "common.preparing": "Preparando...",
   "common.searchLanguage": "Buscar idioma",
   "common.cancel": "Cancelar",
+  "common.apply": "Aplicar",
   "common.reset": "Redefinir",
   "common.refresh": "Atualizar",
   "onboarding.arrivalBody": "Reserve um momento.",
@@ -2044,6 +2048,7 @@ export const frenchMessages: Messages = {
   "common.preparing": "Préparation...",
   "common.searchLanguage": "Rechercher une langue",
   "common.cancel": "Annuler",
+  "common.apply": "Appliquer",
   "common.reset": "Réinitialiser",
   "common.refresh": "Actualiser",
   "onboarding.arrivalBody": "Prenez un moment.",
@@ -2466,6 +2471,7 @@ export const spanishMessages: Messages = {
   "common.preparing": "Preparando...",
   "common.searchLanguage": "Buscar idioma",
   "common.cancel": "Cancelar",
+  "common.apply": "Aplicar",
   "common.reset": "Restablecer",
   "common.refresh": "Actualizar",
   "onboarding.arrivalBody": "Tómate un momento.",

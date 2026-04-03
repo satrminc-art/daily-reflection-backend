@@ -4,6 +4,7 @@ import { createNativeStackNavigator, NativeStackScreenProps } from "@react-navig
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AdaptiveTimePicker } from "@/components/AdaptiveTimePicker";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { SecondaryButton } from "@/components/SecondaryButton";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { OnboardingBackButton } from "@/components/onboarding/OnboardingBackButton";
 import { AnimatedDivider } from "@/components/onboarding/AnimatedDivider";
@@ -93,13 +94,18 @@ function StepScreen({
   scroll = false,
   showBack = false,
   onBack,
+  stickyFooter,
   children,
 }: {
   scroll?: boolean;
   showBack?: boolean;
   onBack?: () => void;
+  stickyFooter?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const { colorScheme } = useAppContext();
+  const colors = palette[colorScheme];
+  const insets = useSafeAreaInsets();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(18)).current;
 
@@ -123,8 +129,33 @@ function StepScreen({
   return (
     <ScreenContainer
       scroll={scroll}
-      contentContainerStyle={scroll ? styles.scrollScreenContent : styles.screenContent}
-      overlay={showBack && onBack ? <OnboardingBackButton onPress={onBack} /> : undefined}
+      contentContainerStyle={[
+        scroll ? styles.scrollScreenContent : styles.screenContent,
+        stickyFooter ? { paddingBottom: Math.max(196, insets.bottom + 148) } : null,
+      ]}
+      overlay={
+        showBack || stickyFooter ? (
+          <>
+            {showBack && onBack ? <OnboardingBackButton onPress={onBack} /> : null}
+            {stickyFooter ? (
+              <View pointerEvents="box-none" style={styles.stickyFooterOverlay}>
+                <Animated.View
+                  style={[
+                    styles.stickyFooterShell,
+                    {
+                      backgroundColor: colors.appBackground,
+                      borderTopColor: colors.border,
+                      paddingBottom: Math.max(14, insets.bottom + 6),
+                    },
+                  ]}
+                >
+                  {stickyFooter}
+                </Animated.View>
+              </View>
+            ) : null}
+          </>
+        ) : undefined
+      }
     >
       <Animated.View
         style={[
@@ -641,7 +672,7 @@ function NameScreen({ navigation }: StepProps<"Name">) {
         align="center"
         contentStyle={styles.nameContent}
         footer={
-          <>
+          <View style={styles.nameFooter}>
             <PrimaryButton
               label={t("onboarding.nameInput.cta")}
               onPress={() => {
@@ -649,16 +680,18 @@ function NameScreen({ navigation }: StepProps<"Name">) {
                 navigation.navigate("NameConfirmation");
               }}
             />
-            <PrimaryButton
+            <View style={[styles.nameSecondaryDivider, { backgroundColor: colors.border }]} />
+            <SecondaryButton
               label={t("common.continueWithoutName")}
               onPress={() => {
                 triggerSoftSelectionHaptic();
                 setUserName("");
                 navigation.navigate("NameConfirmation");
               }}
-              variant="ghost"
+              variant="text"
+              style={styles.nameSecondaryAction}
             />
-          </>
+          </View>
         }
       >
         <AnimatedReveal delay={220} duration={560} distance={12}>
@@ -737,22 +770,42 @@ function IntentScreen({ navigation }: StepProps<"Intent">) {
   const typography = useTypography();
 
   return (
-    <StepScreen scroll showBack onBack={() => navigation.goBack()}>
+    <StepScreen
+      scroll
+      showBack
+      onBack={() => navigation.goBack()}
+      stickyFooter={
+        <AnimatedReveal delay={560} duration={520} distance={18}>
+          <View
+            style={[
+              styles.selectionStickyFooter,
+              {
+                backgroundColor: colors.elevatedSurface,
+                borderColor: colors.borderStrong,
+                shadowColor: colors.shadowStrong,
+              },
+            ]}
+          >
+            <Text style={[styles.selectionStickyHint, { color: colors.secondaryText, fontFamily: typography.body }]}>
+              {t("onboarding.intent.helper")}
+            </Text>
+            <PrimaryButton
+              label={t("common.continue")}
+              onPress={() => {
+                triggerSoftSelectionHaptic();
+                navigation.navigate("Moment");
+              }}
+              disabled={!userPreferences.length}
+            />
+          </View>
+        </AnimatedReveal>
+      }
+    >
       <OnboardingScaffold
         title={t("onboarding.intent.title")}
         subtitle={t("onboarding.intent.subtitle")}
         align="top"
         contentStyle={styles.selectionContent}
-        footer={
-          <PrimaryButton
-            label={t("common.continue")}
-            onPress={() => {
-              triggerSoftSelectionHaptic();
-              navigation.navigate("Moment");
-            }}
-            disabled={!userPreferences.length}
-          />
-        }
       >
         {(["clarity", "calm", "direction", "focus"] as OnboardingPreference[]).map((preference, index) => {
           const localizedPreference = preferenceLabel(preference);
@@ -767,11 +820,6 @@ function IntentScreen({ navigation }: StepProps<"Intent">) {
             </AnimatedReveal>
           );
         })}
-        <AnimatedReveal delay={720} duration={480} distance={12}>
-          <Text style={[styles.preferenceHint, { color: colors.secondaryText, fontFamily: typography.body }]}>
-            {t("onboarding.intent.helper")}
-          </Text>
-        </AnimatedReveal>
       </OnboardingScaffold>
     </StepScreen>
   );
@@ -877,7 +925,14 @@ function ExactTimeScreen({ navigation }: StepProps<"ExactTime">) {
         </AnimatedReveal>
         <AnimatedReveal delay={380} duration={560} distance={14}>
           <View style={[styles.timePickerCard, { backgroundColor: colors.elevatedSurface, borderColor: colors.borderStrong }]}>
-            <AdaptiveTimePicker value={selectedReminderDate} onChange={setSelectedReminderDate} />
+            <AdaptiveTimePicker
+              value={selectedReminderDate}
+              onChange={setSelectedReminderDate}
+              androidActionLabels={{
+                cancel: t("common.cancel"),
+                apply: t("common.apply"),
+              }}
+            />
           </View>
         </AnimatedReveal>
       </OnboardingScaffold>
@@ -918,15 +973,21 @@ function NotificationsScreen({ navigation }: StepProps<"Notifications">) {
         align="center"
         contentStyle={[styles.selectionContent, styles.permissionContent]}
         footer={
-          <>
+          <View style={styles.secondaryActionFooter}>
             <PrimaryButton
               label={t("onboarding.notification.allow")}
               onPress={() => {
                 void handleDecision(true);
               }}
             />
-            <PrimaryButton label={t("onboarding.notification.skip")} onPress={() => void handleDecision(false)} variant="ghost" />
-          </>
+            <View style={[styles.secondaryActionDivider, { backgroundColor: colors.border }]} />
+            <SecondaryButton
+              label={t("onboarding.notification.skip")}
+              onPress={() => void handleDecision(false)}
+              variant="text"
+              style={styles.secondaryActionTextButton}
+            />
+          </View>
         }
       >
         <AnimatedDivider delay={260} width={50} style={styles.storyDivider} />
@@ -1436,6 +1497,18 @@ const styles = StyleSheet.create({
   nameContent: {
     paddingTop: 24,
   },
+  nameFooter: {
+    gap: 10,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  nameSecondaryDivider: {
+    width: 38,
+    height: StyleSheet.hairlineWidth,
+    opacity: 0.9,
+    marginTop: 2,
+    marginBottom: 2,
+  },
   searchInput: {
     minHeight: 52,
     borderWidth: 1,
@@ -1470,6 +1543,9 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     textAlign: "center",
   },
+  nameSecondaryAction: {
+    minHeight: 36,
+  },
   nameConfirmationBody: {
     gap: 18,
   },
@@ -1479,6 +1555,41 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingTop: 10,
     paddingHorizontal: 18,
+  },
+  selectionStickyFooter: {
+    borderWidth: 1,
+    borderRadius: 26,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 4,
+    gap: 12,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 22,
+    elevation: 3,
+  },
+  selectionStickyHint: {
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: "center",
+    paddingHorizontal: 10,
+    maxWidth: 280,
+    alignSelf: "center",
+  },
+  secondaryActionFooter: {
+    gap: 9,
+    alignItems: "center",
+    marginTop: 6,
+  },
+  secondaryActionDivider: {
+    width: 32,
+    height: StyleSheet.hairlineWidth,
+    opacity: 0.78,
+    marginTop: 1,
+    marginBottom: 1,
+  },
+  secondaryActionTextButton: {
+    minHeight: 36,
   },
   ritualWindowContent: {
     paddingTop: 2,
@@ -1669,5 +1780,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 25,
     textAlign: "center",
+  },
+  stickyFooterOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-end",
+  },
+  stickyFooterShell: {
+    paddingHorizontal: 22,
+    paddingTop: 12,
   },
 });

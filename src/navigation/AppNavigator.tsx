@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -117,6 +118,9 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: colors.tabBarBackground,
           borderTopColor: colors.borderStrong,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          elevation: 0,
+          shadowOpacity: 0,
           height: 64 + insets.bottom,
           paddingBottom: Math.max(10, insets.bottom),
           paddingTop: 8,
@@ -214,7 +218,9 @@ export function AppNavigator() {
       : "Today";
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <>
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} backgroundColor={colors.appBackground} />
+      <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
         initialRouteName={initialRouteName}
         screenOptions={{
@@ -227,6 +233,7 @@ export function AppNavigator() {
             fontWeight: "700",
             fontFamily: typography.display,
           },
+          headerShadowVisible: false,
           contentStyle: {
             backgroundColor: colors.appBackground,
           },
@@ -272,7 +279,8 @@ export function AppNavigator() {
           }}
         />
       </Stack.Navigator>
-    </NavigationContainer>
+      </NavigationContainer>
+    </>
   );
 }
 

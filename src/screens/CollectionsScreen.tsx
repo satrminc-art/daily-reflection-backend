@@ -14,6 +14,7 @@ import { RouteProp, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EditorialHeader } from "@/components/EditorialHeader";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { SecondaryButton } from "@/components/SecondaryButton";
 import { UpgradeCard } from "@/components/premium/UpgradeCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAppContext } from "@/context/AppContext";
@@ -313,7 +314,7 @@ export function CollectionsScreen({ route }: Props) {
       <Modal visible={isComposerOpen} transparent animationType="slide" onRequestClose={resetComposer}>
         <View style={[styles.sheetBackdrop, { backgroundColor: colors.overlayBackdrop }]}>
           <KeyboardAvoidingView
-            behavior={Platform.select({ ios: "padding", android: undefined })}
+            behavior={Platform.select({ ios: "padding", android: "height" })}
             style={styles.sheetKeyboard}
           >
             <View
@@ -388,7 +389,7 @@ export function CollectionsScreen({ route }: Props) {
               </ScrollView>
 
               <View style={[styles.sheetFooter, { borderTopColor: colors.border }]}>
-                <PrimaryButton label={t("common.cancel")} onPress={resetComposer} variant="ghost" style={styles.footerButton} />
+                <SecondaryButton label={t("common.cancel")} onPress={resetComposer} variant="text" style={styles.footerButton} />
                 <PrimaryButton
                   label={t("collections.saveAction")}
                   onPress={() => {

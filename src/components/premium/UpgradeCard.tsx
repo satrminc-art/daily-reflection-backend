@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { SecondaryButton } from "@/components/SecondaryButton";
 import { useAppContext } from "@/context/AppContext";
 import { useTypography } from "@/hooks/useTypography";
 import { palette } from "@/utils/theme";
@@ -47,7 +48,7 @@ export function UpgradeCard({
       <View style={styles.actions}>
         <PrimaryButton label={actionLabel} onPress={onPress} />
         {secondaryLabel && onSecondaryPress ? (
-          <PrimaryButton label={secondaryLabel} onPress={onSecondaryPress} variant="ghost" />
+          <SecondaryButton label={secondaryLabel} onPress={onSecondaryPress} variant="text" />
         ) : null}
       </View>
     </View>

@@ -2053,7 +2053,7 @@ export function SettingsScreen() {
         <View style={[styles.modalBackdrop, styles.sheetBackdrop, { backgroundColor: colors.overlayBackdrop }]}>
           <KeyboardAvoidingView
             style={styles.sheetKeyboardFrame}
-            behavior={Platform.select({ ios: "padding", android: undefined })}
+            behavior={Platform.select({ ios: "padding", android: "height" })}
           >
             <View style={[styles.appBackgroundSheetCard, { backgroundColor: settingsCard, borderColor: settingsBorder }]}>
               <View style={[styles.sheetHandle, { backgroundColor: settingsBorder }]} />
@@ -2229,7 +2229,7 @@ export function SettingsScreen() {
         <View style={[styles.modalBackdrop, styles.sheetBackdrop, { backgroundColor: colors.overlayBackdrop }]}>
           <KeyboardAvoidingView
             style={styles.sheetKeyboardFrame}
-            behavior={Platform.select({ ios: "padding", android: undefined })}
+            behavior={Platform.select({ ios: "padding", android: "height" })}
           >
             <View style={[styles.appBackgroundSheetCard, { backgroundColor: settingsCard, borderColor: settingsBorder }]}>
               <View style={[styles.sheetHandle, { backgroundColor: settingsBorder }]} />

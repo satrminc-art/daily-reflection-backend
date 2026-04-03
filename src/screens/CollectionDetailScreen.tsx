@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EditorialHeader } from "@/components/EditorialHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { SecondaryButton } from "@/components/SecondaryButton";
 import { PremiumGateCard } from "@/components/premium/PremiumGateCard";
 import { ReflectionListItem } from "@/components/ReflectionListItem";
 import { ScreenContainer } from "@/components/ScreenContainer";
@@ -153,7 +154,7 @@ export function CollectionDetailScreen({ route }: Props) {
             variant="secondary"
             style={styles.actionButton}
           />
-          <PrimaryButton
+          <SecondaryButton
             label={t("collections.deleteAction")}
             onPress={() => {
               Alert.alert(t("collections.deleteConfirmTitle"), t("collections.deleteConfirmMessage"), [
@@ -169,7 +170,7 @@ export function CollectionDetailScreen({ route }: Props) {
                 },
               ]);
             }}
-            variant="ghost"
+            variant="text"
             style={styles.actionButton}
           />
         </View>
@@ -233,7 +234,7 @@ export function CollectionDetailScreen({ route }: Props) {
       <Modal visible={isEditOpen} transparent animationType="slide" onRequestClose={() => setIsEditOpen(false)}>
         <View style={[styles.sheetBackdrop, { backgroundColor: colors.overlayBackdrop }]}>
           <KeyboardAvoidingView
-            behavior={Platform.select({ ios: "padding", android: undefined })}
+            behavior={Platform.select({ ios: "padding", android: "height" })}
             style={styles.sheetKeyboard}
           >
             <View
@@ -308,7 +309,7 @@ export function CollectionDetailScreen({ route }: Props) {
               </ScrollView>
 
               <View style={[styles.sheetFooter, { borderTopColor: colors.border }]}>
-                <PrimaryButton label={t("common.cancel")} onPress={() => setIsEditOpen(false)} variant="ghost" style={styles.footerButton} />
+                <SecondaryButton label={t("common.cancel")} onPress={() => setIsEditOpen(false)} variant="text" style={styles.footerButton} />
                 <PrimaryButton
                   label={t("collections.saveAction")}
                   onPress={() => {

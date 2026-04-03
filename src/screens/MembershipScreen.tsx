@@ -1,17 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { PlanBadge } from "@/components/membership/PlanBadge";
 import { AnimatedReveal } from "@/components/onboarding/AnimatedReveal";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { SecondaryButton } from "@/components/SecondaryButton";
 import { __DEV_OVERRIDE_ENABLED__ } from "@/config/devFlags";
 import { useAppContext } from "@/context/AppContext";
 import { useAppStrings } from "@/hooks/useAppStrings";
@@ -53,6 +55,7 @@ export function MembershipScreen({ navigation }: Props) {
   const subscription = useSubscription();
   const colors = palette[colorScheme];
   const typography = useTypography();
+  const insets = useSafeAreaInsets();
   const [offeringLoaded, setOfferingLoaded] = useState(false);
   const [fallbackLifelongPackage, setFallbackLifelongPackage] = useState<PurchasesPackage | null>(null);
   const [purchaseLoading, setPurchaseLoading] = useState<PurchaseTarget | null>(null);
@@ -287,7 +290,17 @@ export function MembershipScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.appBackground }]}>
-      <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} bounces={false}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.contentContainer,
+          {
+            paddingTop: Math.max(Platform.OS === "android" ? 38 : 24, insets.top + 18),
+            paddingBottom: Math.max(30, insets.bottom + 18),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         <AnimatedReveal delay={40} distance={10}>
           <View style={styles.header}>
           <Text style={[styles.eyebrow, { color: colors.accent, fontFamily: typography.meta }]}>
@@ -469,9 +482,9 @@ export function MembershipScreen({ navigation }: Props) {
           <Text style={[styles.freeTrustText, { color: colors.secondaryText, fontFamily: typography.body }]}>
             {t("membership.freeTrustNote")}
           </Text>
-          <PrimaryButton
+          <SecondaryButton
             label={isLaunchOffer ? t("onboarding.paywall.free") : t("membership.freeAction")}
-            variant="ghost"
+            variant="text"
             onPress={() => {
               void handleContinueFree();
             }}
@@ -491,11 +504,12 @@ export function MembershipScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        <Pressable onPress={() => void handleRestore()} hitSlop={8} style={styles.restoreWrap}>
-          <Text style={[styles.restoreText, { color: colors.secondaryText, fontFamily: typography.body }]}>
-            {isLaunchOffer ? t("onboarding.paywall.restore") : t("settings.restorePurchases")}
-          </Text>
-        </Pressable>
+        <SecondaryButton
+          label={isLaunchOffer ? t("onboarding.paywall.restore") : t("settings.restorePurchases")}
+          onPress={() => void handleRestore()}
+          variant="text"
+          style={styles.restoreWrap}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -507,12 +521,14 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 30,
   },
   header: {
     gap: 10,
     marginBottom: 22,
+    paddingTop: 4,
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 348,
   },
   eyebrow: {
     fontSize: 11,
@@ -524,16 +540,19 @@ const styles = StyleSheet.create({
     fontSize: 34,
     lineHeight: 42,
     fontWeight: "600",
+    maxWidth: 324,
   },
   subtitle: {
     fontSize: 16,
     lineHeight: 24,
     maxWidth: 320,
+    paddingRight: 2,
   },
   heroLine: {
     fontSize: 15,
     lineHeight: 23,
     maxWidth: 324,
+    paddingRight: 2,
   },
   premiumCard: {
     borderWidth: 1,
@@ -733,18 +752,10 @@ const styles = StyleSheet.create({
   },
   freeButton: {
     alignSelf: "flex-start",
-    paddingHorizontal: 0,
-    minHeight: 44,
   },
   restoreWrap: {
     alignSelf: "center",
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  restoreText: {
-    fontSize: 14,
-    lineHeight: 20,
-    textDecorationLine: "underline",
+    marginTop: 4,
   },
   errorCard: {
     borderWidth: 1,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
 import { AnimatedDivider } from "@/components/onboarding/AnimatedDivider";
 import { AnimatedReveal } from "@/components/onboarding/AnimatedReveal";
 import { useAppContext } from "@/context/AppContext";
@@ -270,6 +270,26 @@ export function QuietAssemblyLoader({
         />
         <Animated.View
           style={[
+            styles.orbitAccentWrap,
+            {
+              transform: [{ rotate: orbitRotate }],
+              opacity: Platform.OS === "android" ? 0.96 : 0.82,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.orbitAccentHalo,
+              {
+                backgroundColor: colors.accent,
+                opacity: Platform.OS === "android" ? 0.14 : 0.09,
+              },
+            ]}
+          />
+          <View style={[styles.orbitAccent, { backgroundColor: colors.accent }]} />
+        </Animated.View>
+        <Animated.View
+          style={[
             styles.progressHalfWrap,
             styles.progressHalfRightWrap,
           ]}
@@ -417,6 +437,26 @@ const styles = StyleSheet.create({
     height: 134,
     borderRadius: 67,
     borderWidth: 2,
+  },
+  orbitAccentWrap: {
+    position: "absolute",
+    width: 134,
+    height: 134,
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+  orbitAccent: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    marginTop: -4,
+  },
+  orbitAccentHalo: {
+    position: "absolute",
+    top: -7,
+    width: 18,
+    height: 18,
+    borderRadius: 999,
   },
   progressHalfWrap: {
     position: "absolute",
